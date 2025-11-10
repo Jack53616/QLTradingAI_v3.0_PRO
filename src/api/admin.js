@@ -5,73 +5,93 @@ import { log } from "../utils/logger.js";
 
 export const adminRouter = express.Router();
 
-// ✅ تسجيل دخول الأدمن
 adminRouter.post("/login", (req, res) => {
-  const { token } = req.body;
-  if (token !== process.env.ADMIN_TOKEN)
+  const { token } = req.body || {};
+  if (!token || token !== process.env.ADMIN_TOKEN) {
     return res.status(401).json({ ok: false, error: "invalid_admin_token" });
+  }
   const jwt = signAdmin("root");
   res.json({ ok: true, jwt });
 });
 
-// ✅ جلب جميع المستخدمين
-adminRouter.get("/users", verifyAdminJWT, async (req, res) => {
+adminRouter.use(verifyAdminJWT);
+
+adminRouter.get("/users", async (_req, res) => {
   try {
-    const result = await pool.query("SELECT * FROM users ORDER BY id DESC");
+    const result = await pool.query(
+      "SELECT id, name, username, level, balance, sub_expires FROM users ORDER BY id DESC"
+    );
     res.json({ ok: true, users: result.rows });
   } catch (err) {
-    log("❌ Error loading users: " + err.message);
-    res.json({ ok: false });
+    log("❌ Error loading users:", err);
+    res.json({ ok: false, error: "load_failed" });
   }
 });
 
-// ✅ عرض تفاصيل مستخدم محدد
-adminRouter.get("/user/:id", verifyAdminJWT, async (req, res) => {
+adminRouter.get("/user/:id", async (req, res) => {
   try {
     const id = req.params.id;
     const result = await pool.query(
-      `SELECT id, name, level, balance, sub_expires,
-       (SELECT COUNT(*) FROM trades WHERE user_id = $1) AS trades_count
-       FROM users WHERE id = $1`,
+      `SELECT id, name, username, level, balance, sub_expires,
+              (SELECT COUNT(*) FROM trades WHERE user_id = $1) AS trades_count
+         FROM users WHERE id = $1`,
       [id]
     );
-    if (!result.rows.length)
+    if (!result.rows.length) {
       return res.json({ ok: false, error: "user_not_found" });
+    }
     res.json({ ok: true, user: result.rows[0] });
   } catch (err) {
-    log("❌ Error fetching user details: " + err.message);
-    res.json({ ok: false });
+    log("❌ Error fetching user details:", err);
+    res.json({ ok: false, error: "load_failed" });
   }
 });
 
-// ✅ تمديد الاشتراك
-adminRouter.post("/extend/:id", verifyAdminJWT, async (req, res) => {
+adminRouter.post("/extend/:id", async (req, res) => {
   try {
     const id = req.params.id;
-    const { days } = req.body;
+    const days = Number(req.body?.days || 0);
+    if (!days || Number.isNaN(days)) {
+      return res.status(400).json({ ok: false, error: "invalid_days" });
+    }
+
     await pool.query(
       `UPDATE users
-       SET sub_expires = COALESCE(sub_expires, NOW()) + ($1 || ' days')::interval
+         SET sub_expires = COALESCE(sub_expires, NOW()) + ($1 || ' days')::interval
        WHERE id = $2`,
-      [days, id]
+      [days.toString(), id]
     );
     log(`🕒 Extended subscription for user ${id} by ${days} days`);
     res.json({ ok: true });
   } catch (err) {
-    log("❌ Error extending subscription: " + err.message);
-    res.json({ ok: false });
+    log("❌ Error extending subscription:", err);
+    res.json({ ok: false, error: "extend_failed" });
   }
 });
 
-// ✅ حذف المستخدم
-adminRouter.delete("/delete/:id", verifyAdminJWT, async (req, res) => {
+adminRouter.delete("/delete/:id", async (req, res) => {
   try {
     const id = req.params.id;
     await pool.query("DELETE FROM users WHERE id = $1", [id]);
     log(`🗑️ Deleted user ${id}`);
     res.json({ ok: true });
   } catch (err) {
-    log("❌ Error deleting user: " + err.message);
-    res.json({ ok: false });
+    log("❌ Error deleting user:", err);
+    res.json({ ok: false, error: "delete_failed" });
+  }
+});
+
+adminRouter.get("/requests", async (_req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT r.id, r.user_id, r.method, r.address, r.amount, r.status, r.created_at, u.name
+         FROM requests r
+         LEFT JOIN users u ON u.id = r.user_id
+         ORDER BY r.created_at DESC LIMIT 100`
+    );
+    res.json({ ok: true, requests: rows });
+  } catch (err) {
+    log("❌ Error loading requests:", err);
+    res.json({ ok: false, error: "requests_failed" });
   }
 });

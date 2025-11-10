@@ -1,6 +1,61 @@
 {
-  "tabWallet": "Wallet",
-  "tabMarkets": "Markets",
-  "tabTrades": "My Trades",
-  "tabWithdraw": "Withdraw"
+  "subscription": {
+    "title": "🔑 Enter Subscription Key",
+    "subtitle": "Access your premium dashboard with your activation key.",
+    "activate": "Activate",
+    "placeholder": "Enter your activation key",
+    "buy": "Buy a key 💬"
+  },
+  "tabs": {
+    "markets": "Markets",
+    "trades": "Trades",
+    "withdraw": "Withdraw",
+    "feed": "Live Feed"
+  },
+  "wallet": {
+    "balance": "Total Balance",
+    "user": "User",
+    "expires": "Subscription expires",
+    "subtitle": "Stay funded and enjoy automated trades.",
+    "unknown": "Guest",
+    "noSubscription": "No active subscription"
+  },
+  "markets": {
+    "title": "Live Markets",
+    "updated": "Updated just now",
+    "empty": "Market data is temporarily unavailable."
+  },
+  "trades": {
+    "title": "Recent Trades",
+    "empty": "No trades yet. Activate your subscription to start."
+  },
+  "withdraw": {
+    "title": "Request Withdrawal",
+    "method": "Method",
+    "address": "Address / IBAN",
+    "amount": "Amount",
+    "submit": "Send Request",
+    "addressPlaceholder": "Enter wallet address or IBAN",
+    "amountPlaceholder": "Requested amount",
+    "methods": {
+      "usdt": "USDT (TRC20)",
+      "btc": "Bitcoin",
+      "bank": "Bank Transfer"
+    }
+  },
+  "feed": {
+    "title": "Community Activity"
+  },
+  "errors": {
+    "keyRequired": "Please enter your activation key first.",
+    "invalidKey": "This key is invalid or already used.",
+    "server": "Server error. Please try again.",
+    "withdrawFailed": "Withdrawal request failed."
+  },
+  "messages": {
+    "activating": "Activating...",
+    "activated": "✅ Key activated successfully!",
+    "sending": "Sending request...",
+    "withdrawSuccess": "✅ Withdrawal request sent."
+  }
 }

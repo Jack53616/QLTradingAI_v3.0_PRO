@@ -8,18 +8,16 @@ const loader = document.getElementById("loadingIndicator");
 
 let jwt = localStorage.getItem("admin_jwt") || "";
 
-// 🔹 إظهار أو إخفاء مؤشر التحميل
-function showLoader(show = true) {
+function toggleLoader(show) {
   if (!loader) return;
-  loader.style.display = show ? "block" : "none";
+  loader.classList.toggle("hidden", !show);
 }
 
-// ✅ تسجيل دخول الأدمن
 async function login() {
   const token = tokenInput.value.trim();
   if (!token) return alert("Please enter admin token");
 
-  showLoader(true);
+  toggleLoader(true);
   try {
     const res = await fetch("/api/admin/login", {
       method: "POST",
@@ -28,33 +26,32 @@ async function login() {
     });
 
     const data = await res.json();
-    if (data.ok) {
+    if (res.ok && data.ok) {
       jwt = data.jwt;
       localStorage.setItem("admin_jwt", jwt);
       loginBox.classList.add("hidden");
       dashboard.classList.remove("hidden");
-      loadUsers();
+      await loadUsers(false);
     } else {
       alert("❌ Invalid admin token");
     }
   } catch (err) {
-    console.error("Login error:", err);
+    console.error("Login error", err);
     alert("Server error while logging in");
   } finally {
-    showLoader(false);
+    toggleLoader(false);
   }
 }
 
-// ✅ تحميل المستخدمين
-async function loadUsers() {
-  showLoader(true);
+async function loadUsers(showSpinner = true) {
+  if (showSpinner) toggleLoader(true);
   try {
     const res = await fetch("/api/admin/users", {
       headers: { Authorization: "Bearer " + jwt },
     });
     const data = await res.json();
 
-    if (!data.ok) {
+    if (!res.ok || !data.ok) {
       alert("Session expired. Please login again.");
       localStorage.removeItem("admin_jwt");
       dashboard.classList.add("hidden");
@@ -67,69 +64,58 @@ async function loadUsers() {
       const tr = document.createElement("tr");
       tr.innerHTML = `
         <td>${u.id}</td>
-        <td>${u.name || "-"}</td>
+        <td>${u.name || u.username || "-"}</td>
         <td>${u.level}</td>
-        <td>${u.balance}$</td>
+        <td>${Number(u.balance || 0).toFixed(2)}$</td>
         <td>${u.sub_expires ? new Date(u.sub_expires).toLocaleDateString() : "-"}</td>
-        <td><button class="viewBtn" data-id="${u.id}">👁 View</button></td>
+        <td><button class="action-btn" data-id="${u.id}">View</button></td>
       `;
       tbody.appendChild(tr);
     });
 
-    document.querySelectorAll(".viewBtn").forEach((btn) => {
+    tbody.querySelectorAll(".action-btn").forEach((btn) => {
       btn.addEventListener("click", () => showUserDetails(btn.dataset.id));
     });
   } catch (err) {
-    console.error("Error loading users:", err);
+    console.error("Error loading users", err);
     alert("Error loading users");
   } finally {
-    showLoader(false);
+    if (showSpinner) toggleLoader(false);
   }
 }
 
-// ✅ عرض تفاصيل المستخدم
 async function showUserDetails(id) {
-  showLoader(true);
+  toggleLoader(true);
   try {
     const res = await fetch(`/api/admin/user/${id}`, {
       headers: { Authorization: "Bearer " + jwt },
     });
     const data = await res.json();
-    if (!data.ok) return alert("Failed to load user data.");
+    if (!res.ok || !data.ok) return alert("Failed to load user data.");
 
     const u = data.user;
-    const action = prompt(`
-👤 User ID: ${u.id}
-📛 Name: ${u.name || "-"}
-💰 Balance: ${u.balance}$
-⭐ Level: ${u.level}
-📅 Subscription: ${u.sub_expires ? new Date(u.sub_expires).toLocaleDateString() : "-"}
-📈 Trades: ${u.trades_count || 0}
-
-اكتب:
-1️⃣ لتمديد الاشتراك
-2️⃣ لحذف المستخدم
-3️⃣ لإلغاء
-    `);
+    const action = prompt(
+      `👤 User ID: ${u.id}\n📛 Name: ${u.name || u.username || "-"}\n💰 Balance: ${Number(u.balance || 0).toFixed(2)}$\n⭐ Level: ${u.level}\n📅 Subscription: ${u.sub_expires ? new Date(u.sub_expires).toLocaleDateString() : "-"}\n📈 Trades: ${u.trades_count || 0}\n\nType 1 to extend subscription, 2 to delete user, 0 to cancel.`
+    );
 
     if (action === "1") {
-      const days = prompt("كم يوم تريد تمديد الاشتراك؟");
+      const days = prompt("How many days to extend?");
       if (!days) return;
       await extendSubscription(u.id, days);
     } else if (action === "2") {
-      const confirmDelete = confirm(`هل أنت متأكد أنك تريد حذف المستخدم ${u.id}?`);
-      if (confirmDelete) await deleteUser(u.id);
+      if (confirm(`Are you sure you want to delete user ${u.id}?`)) {
+        await deleteUser(u.id);
+      }
     }
   } catch (err) {
-    console.error("User details error:", err);
+    console.error("User details error", err);
   } finally {
-    showLoader(false);
+    toggleLoader(false);
   }
 }
 
-// ✅ تمديد الاشتراك
 async function extendSubscription(id, days) {
-  showLoader(true);
+  toggleLoader(true);
   try {
     const res = await fetch(`/api/admin/extend/${id}`, {
       method: "POST",
@@ -140,42 +126,49 @@ async function extendSubscription(id, days) {
       body: JSON.stringify({ days }),
     });
     const data = await res.json();
-    if (data.ok) {
-      alert(`✅ تم تمديد الاشتراك ${days} يوم بنجاح.`);
+    if (res.ok && data.ok) {
+      alert(`✅ Subscription extended by ${days} days.`);
       loadUsers();
-    } else alert("❌ فشل تمديد الاشتراك.");
+    } else {
+      alert("❌ Failed to extend subscription.");
+    }
   } catch (err) {
-    console.error("Extend error:", err);
+    console.error("Extend error", err);
   } finally {
-    showLoader(false);
+    toggleLoader(false);
   }
 }
 
-// ✅ حذف المستخدم
 async function deleteUser(id) {
-  showLoader(true);
+  toggleLoader(true);
   try {
     const res = await fetch(`/api/admin/delete/${id}`, {
       method: "DELETE",
       headers: { Authorization: "Bearer " + jwt },
     });
     const data = await res.json();
-    if (data.ok) {
-      alert(`🗑️ تم حذف المستخدم ${id}`);
+    if (res.ok && data.ok) {
+      alert(`🗑️ User ${id} deleted.`);
       loadUsers();
-    } else alert("❌ فشل حذف المستخدم.");
+    } else {
+      alert("❌ Failed to delete user.");
+    }
   } catch (err) {
-    console.error("Delete user error:", err);
+    console.error("Delete user error", err);
   } finally {
-    showLoader(false);
+    toggleLoader(false);
   }
 }
 
-// ✅ أحداث الأزرار
 loginBtn.addEventListener("click", login);
 refreshBtn.addEventListener("click", loadUsers);
 
-// ✅ تسجيل الدخول التلقائي في حال وجود JWT محفوظ
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" && !dashboard.classList.contains("hidden")) {
+    loadUsers();
+  }
+});
+
 if (jwt) {
   loginBox.classList.add("hidden");
   dashboard.classList.remove("hidden");
