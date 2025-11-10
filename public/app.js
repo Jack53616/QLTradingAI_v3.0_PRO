@@ -56,3 +56,57 @@ async function apiFetch(url, options = {}) {
     throw err;
   }
 }
+
+// 🧠 تشغيل التطبيق بعد تحميل الصفحة
+async function bootstrap() {
+  console.log("🚀 Bootstrapping QL Trading AI...");
+  await setLanguage(state.lang);
+
+  // تأخير بسيط لتجربة تحميل سلسة
+  await new Promise((resolve) => setTimeout(resolve, 900));
+
+  let profileLoaded = false;
+
+  try {
+    console.log("🔍 Checking user profile via /api/users/me...");
+    const res = await apiFetch("/api/users/me", { method: "GET" });
+
+    if (!res) {
+      console.warn("⚠️ No response from API");
+    } else {
+      console.log("🧾 Response status:", res.status);
+      const data = await safeJson(res);
+      console.log("📦 Response data:", data);
+
+      if (data?.ok && data.user) {
+        state.user = data.user;
+        profileLoaded = true;
+        updateProfile();
+        console.log("✅ Profile loaded for:", data.user.name || data.user.id);
+      } else {
+        console.warn("⚠️ No valid user returned, showing subscription screen");
+      }
+    }
+  } catch (err) {
+    console.error("❌ Error fetching user profile:", err);
+  }
+
+  // دايمًا نغلق شاشة التحميل مهما صار
+  dismissLoader();
+
+  if (profileLoaded) {
+    showElement(app);
+    hideElement(subscriptionScreen);
+    loadDashboard();
+    startLiveFeed();
+    scheduleDashboardRefresh();
+  } else {
+    hideElement(app);
+    showElement(subscriptionScreen);
+    startLiveFeed();
+  }
+}
+
+// 🚀 استدعاء التشغيل مباشرة عند تحميل الصفحة
+bootstrap();
+
