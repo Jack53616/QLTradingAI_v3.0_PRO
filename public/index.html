@@ -3,65 +3,110 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="ql-api-base" content="https://qltrading-render.onrender.com" />
   <title>QL Trading AI</title>
   <link rel="stylesheet" href="style.css" />
-  <script src="app.js" defer></script>
+  <script type="module" src="app.js" defer></script>
 </head>
 <body>
-  <!-- Loader -->
   <div id="loader" class="loader">
-    <div class="loader-content">
-      <h1>QL Trading AI Loading...</h1>
-      <div class="glow"></div>
+    <div class="loader-core">
+      <div class="loader-glow"></div>
+      <div class="loader-ring"></div>
+      <div class="loader-logo">QL</div>
+    </div>
+    <p class="loader-text">QL Trading AI Loading...</p>
+  </div>
+
+  <div id="subscription-screen" class="screen hidden">
+    <div class="sub-card">
+      <h2 data-i18n="subscription.title">🔑 Enter Subscription Key</h2>
+      <p class="muted" data-i18n="subscription.subtitle">Access your premium dashboard with your activation key.</p>
+      <input type="text" id="keyInput" placeholder="XXXX-XXXX" data-i18n-placeholder="subscription.placeholder" />
+      <button id="activateKey" class="primary-btn" data-i18n="subscription.activate">Activate</button>
+      <p id="activationStatus" class="status"></p>
+      <a href="https://wa.me/212645014913" target="_blank" class="buy-key" data-i18n="subscription.buy">Buy a key 💬</a>
     </div>
   </div>
 
-  <!-- Subscription Screen -->
-  <div id="subscription-screen" class="screen">
-    <div class="sub-box">
-      <h2>🔑 Enter Subscription Key</h2>
-      <input type="text" id="keyInput" placeholder="Enter your key..." />
-      <button id="activateKey">Activate</button>
-      <a href="https://wa.me/212645014913" target="_blank" class="buy-key">Buy a key 💬</a>
-    </div>
-  </div>
-
-  <!-- Main App -->
-  <div id="app" class="hidden">
-    <header>
-      <h1>QL Wallet</h1>
-      <div class="actions">
-        <button id="langBtn">🌐</button>
+  <div id="app" class="app hidden">
+    <header class="app-header">
+      <div>
+        <h1>QL Wallet</h1>
+        <span id="userLevel" class="badge">Bronze</span>
+      </div>
+      <div class="header-actions">
+        <button id="langBtn" class="icon-btn" title="Language">🌐</button>
+        <button id="refreshBtn" class="icon-btn" title="Refresh">🔄</button>
       </div>
     </header>
 
-    <nav>
-      <button data-tab="wallet" class="active">Wallet</button>
-      <button data-tab="markets">Markets</button>
-      <button data-tab="trades">Trades</button>
-      <button data-tab="withdraw">Withdraw</button>
+    <section class="wallet-panel">
+      <div class="wallet-balance">
+        <h2 data-i18n="wallet.balance">Total Balance</h2>
+        <p id="balance" class="balance-value">$0.00</p>
+        <p id="subscription" class="muted"></p>
+      </div>
+      <div class="wallet-meta">
+        <div>
+          <span class="label" data-i18n="wallet.user">User</span>
+          <p id="userName">-</p>
+        </div>
+        <div>
+          <span class="label" data-i18n="wallet.expires">Subscription expires</span>
+          <p id="expires">-</p>
+        </div>
+      </div>
+    </section>
+
+    <nav class="tabs">
+      <button data-tab="markets" class="active" data-i18n="tabs.markets">Markets</button>
+      <button data-tab="trades" data-i18n="tabs.trades">Trades</button>
+      <button data-tab="withdraw" data-i18n="tabs.withdraw">Withdraw</button>
+      <button data-tab="feed" data-i18n="tabs.feed">Live Feed</button>
     </nav>
 
-    <main>
-      <section id="wallet" class="tab active">
-        <h2>Welcome to QL Wallet</h2>
-        <p>Your balance and subscription details appear here.</p>
+    <main class="tab-content">
+      <section id="markets" class="tab active">
+        <h2 data-i18n="markets.title">Live Markets</h2>
+        <div id="marketList" class="cards"></div>
       </section>
-      <section id="markets" class="tab">
-        <h2>Live Markets</h2>
-        <div id="marketList"></div>
-      </section>
+
       <section id="trades" class="tab">
-        <h2>My Trades</h2>
-        <div id="tradeList"></div>
+        <h2 data-i18n="trades.title">Recent Trades</h2>
+        <div id="tradeList" class="cards empty" data-i18n="trades.empty">No trades yet.</div>
       </section>
+
       <section id="withdraw" class="tab">
-        <h2>Withdraw</h2>
-        <p>Manage your withdrawal requests here.</p>
+        <h2 data-i18n="withdraw.title">Request Withdrawal</h2>
+        <form id="withdrawForm" class="form-card">
+          <label>
+            <span data-i18n="withdraw.method">Method</span>
+            <select id="withdrawMethod">
+              <option value="USDT-TRC20" data-i18n-option="withdraw.methods.usdt">USDT (TRC20)</option>
+              <option value="BTC" data-i18n-option="withdraw.methods.btc">Bitcoin</option>
+              <option value="Bank" data-i18n-option="withdraw.methods.bank">Bank Transfer</option>
+            </select>
+          </label>
+          <label>
+            <span data-i18n="withdraw.address">Address / IBAN</span>
+            <input type="text" id="withdrawAddress" required data-i18n-placeholder="withdraw.addressPlaceholder" />
+          </label>
+          <label>
+            <span data-i18n="withdraw.amount">Amount</span>
+            <input type="number" id="withdrawAmount" min="1" step="0.01" required data-i18n-placeholder="withdraw.amountPlaceholder" />
+          </label>
+          <button type="submit" class="primary-btn" data-i18n="withdraw.submit">Send Request</button>
+          <p id="withdrawStatus" class="status"></p>
+        </form>
+      </section>
+
+      <section id="feed" class="tab">
+        <h2 data-i18n="feed.title">Community Activity</h2>
+        <div id="liveFeed" class="live-feed"></div>
       </section>
     </main>
 
-    <div id="liveFeed" class="live-feed"></div>
     <audio id="notifySound" src="notify.mp3" preload="auto"></audio>
   </div>
 </body>

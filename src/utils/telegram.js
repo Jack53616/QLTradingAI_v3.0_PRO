@@ -12,3 +12,14 @@ export function verifyTelegramInitData(initData, botToken) {
   const checkHash = crypto.createHmac("sha256", secretKey).update(dataCheckString).digest("hex");
   return hash === checkHash;
 }
+
+export function parseTelegramInitData(initData) {
+  const parsed = new URLSearchParams(initData);
+  const userRaw = parsed.get("user");
+  if (!userRaw) return {};
+  try {
+    return JSON.parse(userRaw);
+  } catch {
+    return {};
+  }
+}
