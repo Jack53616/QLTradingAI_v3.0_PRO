@@ -8,13 +8,6 @@ const state = {
   initData: null,
 };
 
-const metaApiBase = document
-  .querySelector('meta[name="ql-api-base"]')
-  ?.getAttribute("content")
-  ?.trim();
-const REMOTE_API_FALLBACK = metaApiBase || "https://qltrading-render.onrender.com";
-let resolvedApiBase = null;
-
 const telegram = window.Telegram?.WebApp;
 if (telegram) {
   telegram.ready();
@@ -142,14 +135,10 @@ document.addEventListener("DOMContentLoaded", () => {
       if (telegramUser?.first_name) payload.name = telegramUser.first_name;
       if (telegramUser?.username) payload.username = telegramUser.username;
 
-      console.info("[activateKey] sending request", {
-        base: resolveApiBase(),
-        hasInitData: Boolean(state.initData),
-      });
-
       const res = await apiFetch("/api/keys/activate", {
         method: "POST",
-        body: payload,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
 
       const data = await safeJson(res);
@@ -162,15 +151,8 @@ document.addEventListener("DOMContentLoaded", () => {
           scheduleDashboardRefresh();
           loadDashboard();
         }, TRANSITION_MS);
-      } else if (data?.error) {
-        const activationErrors = {
-          invalid_key: "errors.invalidKey",
-          key_used: "errors.invalidKey",
-          missing_key: "errors.keyRequired",
-        };
-        const errorKey = activationErrors[data.error] || "errors.server";
-        activationStatus.textContent =
-          translate(errorKey) || translate("errors.server") || translate("errors.invalidKey");
+      } else if (data?.error === "invalid_key" || data?.error === "key_used") {
+        activationStatus.textContent = translate("errors.invalidKey");
       } else {
         activationStatus.textContent = translate("errors.server");
       }
@@ -189,14 +171,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const amount = Number(document.getElementById("withdrawAmount").value);
 
     try {
-      console.info("[withdraw] sending request", {
-        base: resolveApiBase(),
-        method,
-        amount,
-      });
       const res = await apiFetch("/api/withdraw", {
         method: "POST",
-        body: { method, address, amount },
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ method, address, amount }),
       });
       const data = await safeJson(res);
       if (res.ok && data.ok) {
@@ -277,104 +255,7 @@ document.addEventListener("DOMContentLoaded", () => {
       ...(options.headers || {}),
     };
     if (state.initData) headers["x-telegram-initdata"] = state.initData;
-    if (!headers.Accept) headers.Accept = "application/json";
-
-    const requestConfig = { ...options, headers };
-
-    const isFormData =
-      typeof FormData !== "undefined" && requestConfig.body instanceof FormData;
-    const isBlob = typeof Blob !== "undefined" && requestConfig.body instanceof Blob;
-
-    if (requestConfig.body && typeof requestConfig.body === "object" && !isFormData && !isBlob) {
-      if (!headers["Content-Type"]) headers["Content-Type"] = "application/json; charset=utf-8";
-      try {
-        requestConfig.body = JSON.stringify(requestConfig.body);
-      } catch (err) {
-        console.warn("[apiFetch] failed to stringify body", err);
-      }
-    }
-
-    const baseURL = resolveApiBase();
-    if (!requestConfig.credentials) {
-      const sameOrigin =
-        typeof window !== "undefined" &&
-        typeof window.location?.origin === "string" &&
-        baseURL?.startsWith(window.location.origin);
-      requestConfig.credentials = sameOrigin ? "same-origin" : "include";
-    }
-
-    const targetUrl = buildApiUrl(url, baseURL);
-    if (!requestConfig.mode) requestConfig.mode = "cors";
-    if (!requestConfig.cache) requestConfig.cache = "no-store";
-
-    console.debug("[apiFetch]", {
-      url: targetUrl,
-      base: baseURL,
-      method: requestConfig.method || "GET",
-    });
-
-    try {
-      const response = await fetch(targetUrl, requestConfig);
-      const responseMeta = {
-        url: targetUrl,
-        status: response.status,
-        ok: response.ok,
-      };
-      if (!response.ok) {
-        console.warn("[apiFetch] non-200 response", responseMeta);
-      } else {
-        console.debug("[apiFetch] response", responseMeta);
-      }
-      return response;
-    } catch (err) {
-      console.error("[apiFetch] network error", {
-        url: targetUrl,
-        error: err?.message,
-      });
-      throw err;
-    }
-  }
-
-  function buildApiUrl(url, baseURL = resolveApiBase()) {
-    if (/^https?:/i.test(url)) return url;
-
-    if (url.startsWith("/")) return `${baseURL}${url}`;
-    return `${baseURL}/${url}`;
-  }
-
-  function resolveApiBase() {
-    if (resolvedApiBase) return resolvedApiBase;
-
-    const explicitBase = typeof window.API_BASE_URL === "string" ? window.API_BASE_URL.trim() : "";
-    if (explicitBase) {
-      resolvedApiBase = explicitBase;
-      console.debug("[apiFetch] using explicit API base", resolvedApiBase);
-      return resolvedApiBase;
-    }
-
-    const { origin, hostname, protocol } = window.location;
-    const isLocalhost = hostname === "localhost" || hostname === "127.0.0.1";
-
-    if (isLocalhost) {
-      resolvedApiBase = "http://localhost:10000";
-      console.debug("[apiFetch] using localhost API base", resolvedApiBase);
-      return resolvedApiBase;
-    }
-
-    if (origin && origin !== "null" && protocol !== "file:") {
-      const normalizedOrigin = origin.toLowerCase();
-      const isTelegramHost = /telegram|telegraph|t\.me/.test(normalizedOrigin);
-      if (!isTelegramHost) {
-        resolvedApiBase = origin;
-        console.debug("[apiFetch] using same-origin API base", resolvedApiBase);
-        return resolvedApiBase;
-      }
-      console.debug("[apiFetch] telegram host detected, falling back to remote API", normalizedOrigin);
-    }
-
-    resolvedApiBase = REMOTE_API_FALLBACK;
-    console.debug("[apiFetch] using fallback API base", resolvedApiBase);
-    return resolvedApiBase;
+    return fetch(url, { ...options, headers });
   }
 
   function renderMarkets() {
@@ -535,12 +416,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     dismissLoader();
-  }
-
-  const detectedApiBase = resolveApiBase();
-  if (detectedApiBase) {
-    window.__QL_API_BASE = detectedApiBase;
-    console.debug("[bootstrap] resolved API base", detectedApiBase);
   }
 
   bootstrap();
