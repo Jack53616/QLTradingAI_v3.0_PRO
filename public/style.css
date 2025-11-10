@@ -1,17 +1,93 @@
-body {
+/* 🌌 RESET */
+* {
   margin: 0;
-  font-family: "Poppins", sans-serif;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden; /* إزالة الخط العمودي */
+  font-family: "Poppins", "Cairo", sans-serif;
   background: #0e0e16;
   color: #fff;
-  overflow-x: hidden;
+  scroll-behavior: smooth;
+}
+
+/* 🪟 SPLASH SCREEN */
+.splash-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at center, #1a1a24 0%, #0e0e16 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  transition: opacity 0.6s ease;
+}
+
+.splash-screen.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.loader {
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(255, 255, 255, 0.1);
+  border-top-color: #9c27b0;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* 🌐 LANG MENU */
+.lang-menu {
+  position: fixed;
+  top: 60px;
+  right: 15px;
+  background: rgba(20, 20, 30, 0.95);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  padding: 5px;
+  width: 160px;
+  z-index: 1000;
+}
+
+.lang-menu div {
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.lang-menu div:hover {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .hidden { display: none; }
 
+/* 🧭 HEADER */
 header.top {
   padding: 15px;
   backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(255,255,255,0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  position: sticky;
+  top: 0;
+  background: rgba(15, 15, 25, 0.8);
+  z-index: 100;
 }
 
 .t-row {
@@ -26,31 +102,64 @@ header.top {
   color: #9b7bff;
 }
 
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.i-btn {
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.i-btn:hover {
+  transform: scale(1.1);
+}
+
+/* 🧩 SEGMENT BUTTONS */
 .seg {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   margin-top: 10px;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  padding-bottom: 5px;
+}
+
+.seg::-webkit-scrollbar {
+  display: none;
 }
 
 .seg-btn {
   flex: 1;
-  background: rgba(255,255,255,0.05);
+  background: rgba(255, 255, 255, 0.05);
   border: none;
   color: #fff;
   padding: 10px;
   border-radius: 10px;
   font-size: 14px;
   cursor: pointer;
+  white-space: nowrap;
   transition: all 0.2s ease;
 }
 
 .seg-btn.active {
   background: linear-gradient(135deg, #6200ea, #9c27b0);
-  box-shadow: 0 0 10px rgba(156, 39, 176, 0.7);
+  box-shadow: 0 0 10px rgba(156, 39, 176, 0.6);
 }
 
+/* 🧠 MAIN CONTENT */
 main {
   padding: 20px;
+}
+
+.tab {
+  min-height: 60vh;
+  transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
 .fade-in {
@@ -66,39 +175,7 @@ main {
   }
 }
 
-/* 🌍 Lang Menu */
-.lang-switch {
-  position: fixed;
-  top: 50px;
-  right: 10px;
-}
-
-.lang-menu {
-  position: absolute;
-  background: rgba(20,20,30,0.95);
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.1);
-  backdrop-filter: blur(8px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
-  display: flex;
-  flex-direction: column;
-  padding: 5px;
-  width: 150px;
-}
-
-.lang-menu div {
-  padding: 8px 12px;
-  color: #fff;
-  cursor: pointer;
-  border-radius: 8px;
-  transition: background 0.2s ease;
-}
-
-.lang-menu div:hover {
-  background: rgba(255,255,255,0.1);
-}
-
-/* ✨ glow background */
+/* 🌈 GLOW EFFECT */
 body::before {
   content: "";
   position: fixed;
@@ -106,13 +183,13 @@ body::before {
   left: -50%;
   width: 200%;
   height: 200%;
-  background: radial-gradient(circle at 30% 30%, rgba(98,0,234,0.15), transparent 60%);
-  animation: glowMove 12s linear infinite;
+  background: radial-gradient(circle at 30% 30%, rgba(98, 0, 234, 0.12), transparent 70%);
+  animation: glowMove 14s linear infinite;
   z-index: -1;
 }
 
 @keyframes glowMove {
-  0% { transform: translate(0,0); }
+  0% { transform: translate(0, 0); }
   50% { transform: translate(-10%, -10%); }
-  100% { transform: translate(0,0); }
+  100% { transform: translate(0, 0); }
 }
