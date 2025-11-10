@@ -6,6 +6,54 @@ import { parseTelegramInitData, verifyTelegramInitData } from "../utils/telegram
 
 export const keysRouter = express.Router();
 
+keysRouter.use((req, _res, next) => {
+  log("🧩 Keys route", {
+    method: req.method,
+    url: req.originalUrl,
+    origin: req.get("origin") || null,
+    hasInitData: Boolean(req.get("x-telegram-initdata")),
+    contentType: req.get("content-type") || null,
+  });
+  next();
+});
+
+keysRouter.options("/activate", (req, res) => {
+  res.set({
+    "Access-Control-Allow-Origin": req.get("origin") || "*",
+    "Access-Control-Allow-Headers": req.get("access-control-request-headers") || "Content-Type",
+    "Access-Control-Allow-Methods": "POST,OPTIONS",
+    "Access-Control-Allow-Credentials": "true",
+  });
+  res.sendStatus(204);
+});
+
+function normalizePayload(body, rawBody) {
+  if (!body || (typeof body === "object" && !Array.isArray(body) && !Object.keys(body).length)) {
+    if (rawBody instanceof Buffer) {
+      rawBody = rawBody.toString("utf8");
+    }
+    if (typeof rawBody === "string" && rawBody.trim()) {
+      body = rawBody;
+    }
+  }
+
+  if (!body) return {};
+  if (typeof body === "string") {
+    const trimmed = body.trim();
+    if (!trimmed) return {};
+    try {
+      return JSON.parse(trimmed);
+    } catch {
+      if (trimmed.includes("=")) {
+        const params = new URLSearchParams(trimmed);
+        return Object.fromEntries(params.entries());
+      }
+      return { key: trimmed };
+    }
+  }
+  return body;
+}
+
 keysRouter.post("/activate", async (req, res) => {
   const { key, tg_id, name, username, email } = req.body || {};
   if (!key) return res.status(400).json({ ok: false, error: "missing_key" });
@@ -21,6 +69,7 @@ keysRouter.post("/activate", async (req, res) => {
 
   const hashedKey = hashKey(key.trim());
 
+  let client;
   try {
     const { rows, rowCount } = await pool.query(
       "SELECT id, key_code, used_by, duration_days, level FROM keys WHERE key_code = $1",
