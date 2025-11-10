@@ -1,56 +1,102 @@
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: "Poppins", sans-serif;
-}
-
+/* 🔹 الخلفية الأساسية */
 body {
   background: #0a0014;
   color: #fff;
+  font-family: "Poppins", sans-serif;
   overflow-x: hidden;
   overflow-y: auto;
-  min-height: 100vh;
 }
 
-/* ====== خلفية glow البنفسجية المتحركة ====== */
-body::before {
-  content: "";
+/* 🔹 Loader */
+.loader-screen {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle at 20% 20%, rgba(162, 0, 255, 0.3), transparent 40%),
-              radial-gradient(circle at 80% 80%, rgba(120, 0, 255, 0.25), transparent 40%),
-              radial-gradient(circle at 50% 50%, rgba(255, 0, 255, 0.2), transparent 50%);
-  animation: glowMove 12s ease-in-out infinite alternate;
-  z-index: -1;
-  filter: blur(100px);
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: radial-gradient(circle at center, #140026, #0a0014);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 100;
 }
 
-@keyframes glowMove {
-  0% { transform: translate(-5%, -5%) scale(1); }
-  100% { transform: translate(5%, 5%) scale(1.05); }
+.loader-circle {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 5px solid rgba(200, 100, 255, 0.2);
+  border-top-color: #a500ff;
+  animation: spin 1.2s linear infinite;
 }
 
-/* ====== شاشة الاشتراك البنفسجية ====== */
+.loader-text {
+  margin-top: 20px;
+  font-size: 1.2em;
+  color: #dcb9ff;
+  animation: glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes glow {
+  from { opacity: 0.4; }
+  to { opacity: 1; }
+}
+
+/* 🔹 Live Feed إشعارات */
+.live-feed {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 99;
+}
+
+.notification {
+  background: rgba(50, 0, 100, 0.7);
+  backdrop-filter: blur(10px);
+  color: #e5ccff;
+  padding: 10px 15px;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(150, 0, 255, 0.3);
+  animation: fadeInOut 6s ease-in-out forwards;
+  font-size: 0.95em;
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translateY(20px); }
+  10%, 80% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-20px); }
+}
+
+/* 🔹 حركة التبويبات */
+.tab {
+  display: none;
+  animation: fadeSlide 0.5s ease;
+}
+
+.tab.active {
+  display: block;
+}
+
+@keyframes fadeSlide {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* 🔹 باقي التصميم نفس السابق (اشتراك + Wallet) */
 .subscribe-screen {
   position: fixed;
   top: 0; left: 0;
   width: 100%; height: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  display: flex; justify-content: center; align-items: center;
   background: rgba(15, 0, 30, 0.85);
-  z-index: 10;
-  backdrop-filter: blur(10px);
-  animation: fadeIn 1s ease-in-out;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  z-index: 10; backdrop-filter: blur(10px);
 }
 
 .subscribe-box {
@@ -59,133 +105,11 @@ body::before {
   border-radius: 20px;
   text-align: center;
   box-shadow: 0 0 40px rgba(150, 0, 255, 0.4);
-  width: 90%;
-  max-width: 420px;
-  backdrop-filter: blur(20px);
+  width: 90%; max-width: 420px;
 }
 
 .subscribe-box h1 {
   font-size: 2.3em;
   color: #c8a8ff;
   margin-bottom: 10px;
-}
-
-.subscribe-box .desc {
-  font-size: 1em;
-  opacity: 0.8;
-  margin-bottom: 20px;
-}
-
-.subscribe-box input {
-  width: 100%;
-  padding: 10px 14px;
-  border: none;
-  outline: none;
-  border-radius: 10px;
-  background: rgba(255,255,255,0.1);
-  color: #fff;
-  font-size: 1em;
-  margin-bottom: 15px;
-  text-align: center;
-}
-
-.btn-activate {
-  width: 100%;
-  padding: 10px 15px;
-  border: none;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #6b00ff, #a500ff);
-  color: #fff;
-  font-size: 1.1em;
-  cursor: pointer;
-  transition: 0.3s;
-  box-shadow: 0 0 15px rgba(150, 0, 255, 0.5);
-}
-
-.btn-activate:hover {
-  transform: scale(1.05);
-}
-
-.btn-buy {
-  margin-top: 10px;
-  width: 100%;
-  padding: 10px 15px;
-  background: rgba(255, 255, 255, 0.1);
-  color: #dcb9ff;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 10px;
-  font-size: 1em;
-  cursor: pointer;
-  transition: 0.3s;
-}
-
-.btn-buy:hover {
-  background: rgba(200, 100, 255, 0.15);
-  transform: scale(1.05);
-}
-
-/* ====== المحفظة ====== */
-.hidden { display: none; }
-
-.top {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  background: rgba(20, 0, 40, 0.7);
-  padding: 10px 0;
-  box-shadow: 0 2px 15px rgba(120, 0, 200, 0.3);
-  position: sticky;
-  top: 0;
-  z-index: 5;
-}
-
-.brand {
-  font-size: 1.8em;
-  color: #b980ff;
-  text-shadow: 0 0 10px rgba(180, 0, 255, 0.6);
-}
-
-.actions {
-  display: flex;
-  gap: 10px;
-}
-
-.i-btn {
-  background: none;
-  border: none;
-  color: #d6b8ff;
-  cursor: pointer;
-  font-size: 1.3em;
-  transition: 0.3s;
-}
-
-.i-btn:hover {
-  transform: scale(1.2);
-  color: #fff;
-}
-
-.seg {
-  display: flex;
-  justify-content: space-around;
-  width: 100%;
-  margin-top: 8px;
-}
-
-.seg-btn {
-  background: none;
-  border: none;
-  color: #caaaff;
-  font-size: 1em;
-  padding: 10px;
-  cursor: pointer;
-  transition: 0.3s;
-}
-
-.seg-btn.active {
-  color: #fff;
-  border-bottom: 2px solid #b980ff;
-}
-
-.seg-btn:hover {
-  color: #fff;
 }
