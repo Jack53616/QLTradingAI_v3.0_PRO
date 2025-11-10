@@ -1,62 +1,68 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>QL Trading AI</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
+  <script src="app.js" defer></script>
 </head>
 <body>
-
-  <!-- 🔹 Loader -->
-  <div id="loader" class="loader-screen">
-    <div class="loader-circle"></div>
-    <h2 class="loader-text">QL Trading AI Loading...</h2>
-  </div>
-
-  <!-- 🔹 إشعارات Live Feed -->
-  <div id="liveFeed" class="live-feed"></div>
-
-  <!-- 🔹 شاشة الاشتراك البنفسجية -->
-  <div id="subscribeScreen" class="subscribe-screen">
-    <div class="subscribe-box">
-      <h1 class="brand">QL Trading AI</h1>
-      <p class="desc">Enter your subscription key to access your wallet</p>
-      <input id="subKey" type="text" placeholder="Enter your key..." />
-      <button id="activateBtn" class="btn-activate">Activate</button>
-      <button id="buyBtn" class="btn-buy">💎 Buy a key</button>
+  <!-- Loader -->
+  <div id="loader" class="loader">
+    <div class="loader-content">
+      <h1>QL Trading AI Loading...</h1>
+      <div class="glow"></div>
     </div>
   </div>
 
-  <!-- 🔹 واجهة المحفظة -->
-  <div id="app" class="hidden">
-    <header class="top glass">
-      <div class="t-row">
-        <h1 class="brand">QL Wallet</h1>
-        <div class="actions">
-          <button id="btnMusic" class="i-btn" title="Music">🎵</button>
-          <button id="btnLang" class="i-btn" title="Languages">🌐</button>
-        </div>
-      </div>
-      <nav class="seg glass">
-        <button class="seg-btn active" data-tab="wallet" data-i18n="tabWallet">Home</button>
-        <button class="seg-btn" data-tab="markets" data-i18n="tabMarkets">Markets</button>
-        <button class="seg-btn" data-tab="trades" data-i18n="tabTrades">Trades</button>
-        <button class="seg-btn" data-tab="withdraw" data-i18n="tabWithdraw">Withdraw</button>
-        <button class="seg-btn" data-tab="requests" data-i18n="tabRequests">Requests</button>
-      </nav>
-    </header>
-
-    <main>
-      <section id="wallet" class="tab active"></section>
-      <section id="markets" class="tab"></section>
-      <section id="trades" class="tab"></section>
-      <section id="withdraw" class="tab"></section>
-      <section id="requests" class="tab"></section>
-    </main>
+  <!-- Subscription Screen -->
+  <div id="subscription-screen" class="screen">
+    <div class="sub-box">
+      <h2>🔑 Enter Subscription Key</h2>
+      <input type="text" id="keyInput" placeholder="Enter your key..." />
+      <button id="activateKey">Activate</button>
+      <a href="https://wa.me/212645014913" target="_blank" class="buy-key">Buy a key 💬</a>
+    </div>
   </div>
 
-  <audio id="notifySound" src="notify.mp3" preload="auto"></audio>
-  <script src="app.js"></script>
+  <!-- Main App -->
+  <div id="app" class="hidden">
+    <header>
+      <h1>QL Wallet</h1>
+      <div class="actions">
+        <button id="langBtn">🌐</button>
+      </div>
+    </header>
+
+    <nav>
+      <button data-tab="wallet" class="active">Wallet</button>
+      <button data-tab="markets">Markets</button>
+      <button data-tab="trades">Trades</button>
+      <button data-tab="withdraw">Withdraw</button>
+    </nav>
+
+    <main>
+      <section id="wallet" class="tab active">
+        <h2>Welcome to QL Wallet</h2>
+        <p>Your balance and subscription details appear here.</p>
+      </section>
+      <section id="markets" class="tab">
+        <h2>Live Markets</h2>
+        <div id="marketList"></div>
+      </section>
+      <section id="trades" class="tab">
+        <h2>My Trades</h2>
+        <div id="tradeList"></div>
+      </section>
+      <section id="withdraw" class="tab">
+        <h2>Withdraw</h2>
+        <p>Manage your withdrawal requests here.</p>
+      </section>
+    </main>
+
+    <div id="liveFeed" class="live-feed"></div>
+    <audio id="notifySound" src="notify.mp3" preload="auto"></audio>
+  </div>
 </body>
 </html>
