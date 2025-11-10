@@ -20,46 +20,80 @@ keysRouter.post("/activate", async (req, res) => {
   }
 
   const hashedKey = hashKey(key.trim());
+  const client = await pool.connect();
+  let transactionStarted = false;
 
   try {
-    const { rows, rowCount } = await pool.query(
-      "SELECT id, key_code, used_by, duration_days, level FROM keys WHERE key_code = $1",
+    log(`🔹 Starting key activation for user: ${userId}`);
+
+    await client.query("BEGIN");
+    transactionStarted = true;
+
+    // 🔍 جلب بيانات المفتاح مع قفل الصف
+    const keyResult = await client.query(
+      "SELECT id, used_by, duration_days, level FROM keys WHERE key_code = $1 FOR UPDATE",
       [hashedKey]
     );
-    if (!rowCount) return res.status(400).json({ ok: false, error: "invalid_key" });
 
-    const keyData = rows[0];
-    if (!userId) userId = keyData.used_by;
-    if (!userId) return res.status(400).json({ ok: false, error: "missing_user" });
+    if (!keyResult.rowCount) {
+      await client.query("ROLLBACK");
+      return res.status(400).json({ ok: false, error: "invalid_key" });
+    }
 
+    const keyData = keyResult.rows[0];
+
+    // 🚫 مفتاح مستخدم من قبل
     if (keyData.used_by && keyData.used_by !== Number(userId)) {
+      await client.query("ROLLBACK");
       return res.status(409).json({ ok: false, error: "key_used" });
     }
 
     const duration = keyData.duration_days || 30;
     const level = keyData.level || "Bronze";
 
-    const { rows: userRows } = await pool.query(
-      `INSERT INTO users (id, name, username, email, level, balance, sub_expires)
-       VALUES ($1, $2, $3, $4, $5, COALESCE((SELECT balance FROM users WHERE id = $1), 0), NOW() + ($6 || ' days')::interval)
-       ON CONFLICT (id) DO UPDATE SET
-         name = COALESCE(EXCLUDED.name, users.name),
-         username = COALESCE(EXCLUDED.username, users.username),
-         email = COALESCE(EXCLUDED.email, users.email),
-         level = EXCLUDED.level,
-         sub_expires = COALESCE(users.sub_expires, NOW()) + ($6 || ' days')::interval
-       RETURNING id, name, username, level, balance, sub_expires`,
-      [userId, name || null, username || null, email || null, level, duration.toString()]
-    );
+    // 🧩 تحديث أو إدخال المستخدم
+    const userQuery = `
+      INSERT INTO users (id, name, username, email, level, balance, sub_expires)
+      VALUES ($1, $2, $3, $4, $5, 0, NOW() + ($6 || ' days')::interval)
+      ON CONFLICT (id) DO UPDATE SET
+        name = COALESCE(EXCLUDED.name, users.name),
+        username = COALESCE(EXCLUDED.username, users.username),
+        email = COALESCE(EXCLUDED.email, users.email),
+        level = EXCLUDED.level,
+        sub_expires = COALESCE(users.sub_expires, NOW()) + ($6 || ' days')::interval
+      RETURNING id, name, username, level, sub_expires;
+    `;
 
-    await pool.query(
+    const userResult = await client.query(userQuery, [
+      userId,
+      name || null,
+      username || null,
+      email || null,
+      level,
+      duration.toString()
+    ]);
+
+    // 🗝️ تحديث حالة المفتاح
+    await client.query(
       "UPDATE keys SET used_by = $1, used_at = NOW() WHERE id = $2",
       [userId, keyData.id]
     );
 
-    res.json({ ok: true, user: userRows[0], duration });
+    await client.query("COMMIT");
+    transactionStarted = false;
+
+    log(`✅ Subscription activated successfully for user ${userId} (${level}, ${duration}d)`);
+
+    return res.json({
+      ok: true,
+      user: userResult.rows[0],
+      message: "✅ تم تفعيل اشتراكك بنجاح!"
+    });
   } catch (err) {
-    log("❌ Key activation error", err);
-    res.status(500).json({ ok: false, error: "activation_failed" });
+    if (transactionStarted) await client.query("ROLLBACK");
+    log("❌ Key activation error:", err.message || err);
+    return res.status(500).json({ ok: false, error: err.message || "activation_failed" });
+  } finally {
+    client.release();
   }
 });
