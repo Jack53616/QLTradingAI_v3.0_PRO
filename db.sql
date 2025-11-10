@@ -1,14 +1,19 @@
 CREATE TABLE IF NOT EXISTS users (
   id BIGINT PRIMARY KEY,
   name TEXT,
+  username TEXT,
   email TEXT,
   level TEXT DEFAULT 'Bronze',
-  sub_expires TIMESTAMPTZ
+  balance NUMERIC DEFAULT 0,
+  sub_expires TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS keys (
   id SERIAL PRIMARY KEY,
   key_code TEXT UNIQUE,
+  duration_days INTEGER DEFAULT 30,
+  level TEXT DEFAULT 'Bronze',
   used_by BIGINT REFERENCES users(id) ON DELETE SET NULL,
   used_at TIMESTAMPTZ
 );
