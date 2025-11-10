@@ -6,7 +6,68 @@ const levelEl = document.getElementById("level");
 const xpEl = document.getElementById("xp");
 const tradesList = document.getElementById("tradesList");
 
-// استدعاء بيانات المستخدم من السيرفر
+const subscribeScreen = document.getElementById("subscribeScreen");
+const appEl = document.getElementById("app");
+const activateBtn = document.getElementById("activateBtn");
+const buyBtn = document.getElementById("buyBtn");
+const subKeyInput = document.getElementById("subKey");
+
+// ✅ التحقق من حالة الاشتراك
+document.addEventListener("DOMContentLoaded", () => {
+  const isActivated = localStorage.getItem("ql_sub_active");
+
+  if (isActivated) {
+    subscribeScreen.style.display = "none";
+    appEl.classList.remove("hidden");
+    initApp();
+  } else {
+    subscribeScreen.style.display = "flex";
+  }
+});
+
+// ✅ عند الضغط على زر Activate
+activateBtn.addEventListener("click", async () => {
+  const key = subKeyInput.value.trim();
+  if (!key) return alert("Please enter your subscription key.");
+
+  try {
+    const res = await fetch("/api/keys/activate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key })
+    });
+
+    const data = await res.json();
+    if (data.ok) {
+      localStorage.setItem("ql_sub_active", "true");
+      subscribeScreen.style.opacity = 0;
+      setTimeout(() => {
+        subscribeScreen.style.display = "none";
+        appEl.classList.remove("hidden");
+        initApp();
+      }, 700);
+    } else {
+      alert("❌ Invalid key or expired.");
+    }
+  } catch (err) {
+    console.error("Activation error:", err);
+    alert("Server error. Please try again.");
+  }
+});
+
+// ✅ زر شراء المفتاح (واتساب)
+buyBtn.addEventListener("click", () => {
+  window.open("https://wa.me/212645014913", "_blank");
+});
+
+// ✅ دالة تشغيل التطبيق بعد التفعيل
+function initApp() {
+  loadUserData();
+  loadMarkets();
+  loadTrades();
+}
+
+// تحميل بيانات المستخدم
 async function loadUserData() {
   try {
     const res = await fetch("/api/users/me");
@@ -77,13 +138,3 @@ async function loadTrades() {
     console.error("Error loading trades:", err);
   }
 }
-
-// تشغيل تلقائي بعد الدخول
-document.addEventListener("DOMContentLoaded", () => {
-  const isActivated = localStorage.getItem("ql_sub_active");
-  if (isActivated) {
-    loadUserData();
-    loadMarkets();
-    loadTrades();
-  }
-});
