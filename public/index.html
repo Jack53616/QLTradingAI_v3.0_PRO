@@ -1,33 +1,26 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>QL Trading AI</title>
-  <link rel="stylesheet" href="style.css" />
-  <script defer src="index.js"></script>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <!-- شاشة البداية (الأنيميشن البنفسجي المتحرك) -->
-  <div id="gate" class="gate-screen active">
-    <div class="wave-bg"></div>
-    <div class="gate-content">
+
+  <!-- 🔹 شاشة الاشتراك البنفسجية -->
+  <div id="subscribeScreen" class="subscribe-screen">
+    <div class="glow-bg"></div>
+    <div class="subscribe-box">
       <h1 class="brand">QL Trading AI</h1>
-      <p class="loading-text">Loading...</p>
+      <p class="desc">Enter your subscription key to access your wallet</p>
+      <input id="subKey" type="text" placeholder="Enter your key..." />
+      <button id="activateBtn" class="btn-activate">Activate</button>
+      <button id="buyBtn" class="btn-buy">💎 Buy a key</button>
     </div>
   </div>
 
-  <!-- شاشة إدخال كود الاشتراك -->
-  <div id="subscription-screen" class="screen hidden">
-    <div class="sub-box">
-      <h2>Enter Subscription Key</h2>
-      <input id="subKey" type="text" placeholder="Enter your key" />
-      <button id="activateBtn">Activate</button>
-      <p class="status" id="subStatus"></p>
-    </div>
-  </div>
-
-  <!-- واجهة المحفظة -->
+  <!-- 🔹 واجهة المحفظة -->
   <div id="app" class="hidden">
     <header class="top glass">
       <div class="t-row">
@@ -38,43 +31,20 @@
         </div>
       </div>
       <nav class="seg glass">
-        <button class="seg-btn active" data-tab="wallet">Wallet</button>
-        <button class="seg-btn" data-tab="markets">Markets</button>
-        <button class="seg-btn" data-tab="trades">Trades</button>
-        <button class="seg-btn" data-tab="withdraw">Withdraw</button>
-        <button class="seg-btn" data-tab="requests">Requests</button>
+        <button class="seg-btn active" data-tab="wallet" data-i18n="tabWallet">Home</button>
+        <button class="seg-btn" data-tab="markets" data-i18n="tabMarkets">Markets</button>
+        <button class="seg-btn" data-tab="trades" data-i18n="tabTrades">Trades</button>
+        <button class="seg-btn" data-tab="withdraw" data-i18n="tabWithdraw">Withdraw</button>
+        <button class="seg-btn" data-tab="requests" data-i18n="tabRequests">Requests</button>
       </nav>
     </header>
 
-    <main id="tabs">
-      <section id="wallet" class="tab active">
-        <h2>Wallet Balance</h2>
-        <div class="wallet-info">
-          <p><strong>Balance:</strong> <span id="balance">--</span> USDT</p>
-          <p><strong>Level:</strong> <span id="level">--</span></p>
-          <p><strong>XP:</strong> <span id="xp">--</span></p>
-        </div>
-      </section>
-
-      <section id="markets" class="tab">
-        <h2>Markets</h2>
-        <p>BTC / ETH / XAU prices loading...</p>
-      </section>
-
-      <section id="trades" class="tab">
-        <h2>Your Trades</h2>
-        <div id="tradesList"></div>
-      </section>
-
-      <section id="withdraw" class="tab">
-        <h2>Withdraw</h2>
-        <p>Enter your wallet address and amount below.</p>
-      </section>
-
-      <section id="requests" class="tab">
-        <h2>Requests</h2>
-        <p>All your pending and completed requests will appear here.</p>
-      </section>
+    <main>
+      <section id="wallet" class="tab active"></section>
+      <section id="markets" class="tab"></section>
+      <section id="trades" class="tab"></section>
+      <section id="withdraw" class="tab"></section>
+      <section id="requests" class="tab"></section>
     </main>
   </div>
 
