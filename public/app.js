@@ -192,7 +192,11 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   function translate(path) {
-    return path.split(".").reduce((acc, key) => (acc && acc[key] !== undefined ? acc[key] : null), state.translations) || "";
+    return (
+      path
+        .split(".")
+        .reduce((acc, key) => (acc && acc[key] !== undefined ? acc[key] : null), state.translations) || ""
+    );
   }
 
   async function safeJson(response) {
@@ -250,12 +254,20 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  // ✅ الذكاء الجديد لتحديد السيرفر الصحيح
   async function apiFetch(url, options = {}) {
     const headers = {
       ...(options.headers || {}),
     };
     if (state.initData) headers["x-telegram-initdata"] = state.initData;
-    return fetch(url, { ...options, headers });
+
+    const base =
+      window.location.hostname.includes("render.com") ||
+      window.location.hostname.includes("t.me")
+        ? "https://qltrading-render.onrender.com"
+        : "";
+
+    return fetch(base + url, { ...options, headers });
   }
 
   function renderMarkets() {
@@ -275,7 +287,10 @@ document.addEventListener("DOMContentLoaded", () => {
           <div class="title">${market.pair}</div>
           <div class="subtitle">${translate("markets.updated")}</div>
         </div>
-        <strong>$${Number(market.price || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+        <strong>$${Number(market.price || 0).toLocaleString(undefined, {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })}</strong>
       `;
       marketList.appendChild(card);
     });
@@ -297,9 +312,13 @@ document.addEventListener("DOMContentLoaded", () => {
       card.innerHTML = `
         <div>
           <div class="title">${trade.pair} • ${trade.type}</div>
-          <div class="subtitle">${new Date(trade.opened_at).toLocaleString()}</div>
+          <div class="subtitle">${new Date(
+            trade.opened_at
+          ).toLocaleString()}</div>
         </div>
-        <strong class="${profitClass}">${trade.profit >= 0 ? "+" : ""}${Number(trade.profit).toFixed(2)}$</strong>
+        <strong class="${profitClass}">${
+        trade.profit >= 0 ? "+" : ""
+      }${Number(trade.profit).toFixed(2)}$</strong>
       `;
       tradeList.appendChild(card);
     });
@@ -307,12 +326,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function updateProfile() {
     if (!state.user) return;
-    balanceEl.textContent = `$${Number(state.user.balance || 0).toLocaleString(undefined, {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })}`;
+    balanceEl.textContent = `$${Number(state.user.balance || 0).toLocaleString(
+      undefined,
+      { minimumFractionDigits: 2, maximumFractionDigits: 2 }
+    )}`;
     userLevelEl.textContent = state.user.level;
-    userNameEl.textContent = state.user.name || state.user.username || translate("wallet.unknown");
+    userNameEl.textContent =
+      state.user.name ||
+      state.user.username ||
+      translate("wallet.unknown");
     subscriptionEl.textContent = translate("wallet.subtitle");
     if (state.user.sub_expires) {
       const expires = new Date(state.user.sub_expires);
@@ -345,9 +367,12 @@ document.addEventListener("DOMContentLoaded", () => {
   function startLiveFeed() {
     if (feedStarted || !liveFeed) return;
     feedStarted = true;
-    addFeedMessage(baseFeedMessages[Math.floor(Math.random() * baseFeedMessages.length)]);
+    addFeedMessage(
+      baseFeedMessages[Math.floor(Math.random() * baseFeedMessages.length)]
+    );
     window.setInterval(() => {
-      const message = baseFeedMessages[Math.floor(Math.random() * baseFeedMessages.length)];
+      const message =
+        baseFeedMessages[Math.floor(Math.random() * baseFeedMessages.length)];
       addFeedMessage(message);
     }, 60_000);
   }
