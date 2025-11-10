@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QL Trading AI</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app" class="safe">
+    <header class="top glass">
+      <div class="t-row">
+        <h1 class="brand">QL Wallet</h1>
+        <div class="actions">
+          <button id="btnLang" class="i-btn" title="Languages">🌐</button>
+        </div>
+      </div>
+      <nav class="seg glass">
+        <button class="seg-btn active" data-tab="wallet" data-i18n="tabWallet">Wallet</button>
+        <button class="seg-btn" data-tab="markets" data-i18n="tabMarkets">Markets</button>
+        <button class="seg-btn" data-tab="trades" data-i18n="tabTrades">Trades</button>
+        <button class="seg-btn" data-tab="withdraw" data-i18n="tabWithdraw">Withdraw</button>
+      </nav>
+    </header>
+
+    <main>
+      <section id="wallet" class="tab fade-in">💰 <span data-i18n="tabWallet">Wallet</span> content</section>
+      <section id="markets" class="tab hidden">📊 <span data-i18n="tabMarkets">Markets</span> content</section>
+      <section id="trades" class="tab hidden">📈 <span data-i18n="tabTrades">Trades</span> content</section>
+      <section id="withdraw" class="tab hidden">🏦 <span data-i18n="tabWithdraw">Withdraw</span> content</section>
+    </main>
+  </div>
+
+  <div class="lang-switch">
+    <div id="langMenu" class="lang-menu hidden">
+      <div data-lang="en">🇺🇸 English</div>
+      <div data-lang="ar">🇸🇦 العربية</div>
+      <div data-lang="tr">🇹🇷 Türkçe</div>
+      <div data-lang="de">🇩🇪 Deutsch</div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

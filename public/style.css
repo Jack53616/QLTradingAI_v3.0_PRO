@@ -1,0 +1,118 @@
+body {
+  margin: 0;
+  font-family: "Poppins", sans-serif;
+  background: #0e0e16;
+  color: #fff;
+  overflow-x: hidden;
+}
+
+.hidden { display: none; }
+
+header.top {
+  padding: 15px;
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.t-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.brand {
+  font-weight: 700;
+  font-size: 20px;
+  color: #9b7bff;
+}
+
+.seg {
+  display: flex;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.seg-btn {
+  flex: 1;
+  background: rgba(255,255,255,0.05);
+  border: none;
+  color: #fff;
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.seg-btn.active {
+  background: linear-gradient(135deg, #6200ea, #9c27b0);
+  box-shadow: 0 0 10px rgba(156, 39, 176, 0.7);
+}
+
+main {
+  padding: 20px;
+}
+
+.fade-in {
+  opacity: 0;
+  transform: translateY(10px);
+  animation: fadeInUp 0.4s ease forwards;
+}
+
+@keyframes fadeInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 🌍 Lang Menu */
+.lang-switch {
+  position: fixed;
+  top: 50px;
+  right: 10px;
+}
+
+.lang-menu {
+  position: absolute;
+  background: rgba(20,20,30,0.95);
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.1);
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  display: flex;
+  flex-direction: column;
+  padding: 5px;
+  width: 150px;
+}
+
+.lang-menu div {
+  padding: 8px 12px;
+  color: #fff;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: background 0.2s ease;
+}
+
+.lang-menu div:hover {
+  background: rgba(255,255,255,0.1);
+}
+
+/* ✨ glow background */
+body::before {
+  content: "";
+  position: fixed;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle at 30% 30%, rgba(98,0,234,0.15), transparent 60%);
+  animation: glowMove 12s linear infinite;
+  z-index: -1;
+}
+
+@keyframes glowMove {
+  0% { transform: translate(0,0); }
+  50% { transform: translate(-10%, -10%); }
+  100% { transform: translate(0,0); }
+}
