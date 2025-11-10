@@ -12,6 +12,7 @@ import { tradesRouter } from "./api/trades.js";
 import { withdrawRouter } from "./api/withdraw.js";
 import { adminRouter } from "./api/admin.js";
 import { marketsRouter } from "./api/markets.js";
+import { bot } from "./bot/index.js"; // ✅ استيراد البوت
 import { log } from "./utils/logger.js";
 
 dotenv.config();
@@ -20,8 +21,13 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 app.use(cors());
 app.use(bodyParser.json());
+app.use(express.json()); // ✅ مهم لقراءة بيانات تيليجرام
 app.use(express.static(path.join(__dirname, "../public")));
 
+// ✅ راوتر البوت
+app.use("/webhook", bot);
+
+// ✅ باقي الـ APIs
 app.use("/api/keys", secureAccess, keysRouter);
 app.use("/api/users", secureAccess, usersRouter);
 app.use("/api/trades", secureAccess, tradesRouter);
