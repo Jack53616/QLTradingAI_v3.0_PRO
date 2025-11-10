@@ -1,115 +1,123 @@
-/* 🔹 الخلفية الأساسية */
 body {
-  background: #0a0014;
-  color: #fff;
+  margin: 0;
   font-family: "Poppins", sans-serif;
+  background: radial-gradient(circle at top, #0a0015, #050010 80%);
+  color: #fff;
   overflow-x: hidden;
-  overflow-y: auto;
 }
+.hidden { display: none; }
 
-/* 🔹 Loader */
-.loader-screen {
+/* Loader */
+.loader {
   position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  background: radial-gradient(circle at center, #140026, #0a0014);
+  inset: 0;
   display: flex;
-  flex-direction: column;
   justify-content: center;
   align-items: center;
-  z-index: 100;
+  background: rgba(10, 0, 20, 0.98);
+  z-index: 9999;
 }
-
-.loader-circle {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  border: 5px solid rgba(200, 100, 255, 0.2);
-  border-top-color: #a500ff;
-  animation: spin 1.2s linear infinite;
+.loader-content h1 {
+  font-size: 1.8rem;
+  animation: glowPulse 2s infinite;
 }
-
-.loader-text {
-  margin-top: 20px;
-  font-size: 1.2em;
-  color: #dcb9ff;
-  animation: glow 2s ease-in-out infinite alternate;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-@keyframes glow {
-  from { opacity: 0.4; }
-  to { opacity: 1; }
-}
-
-/* 🔹 Live Feed إشعارات */
-.live-feed {
-  position: fixed;
-  bottom: 20px;
-  left: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  z-index: 99;
-}
-
-.notification {
-  background: rgba(50, 0, 100, 0.7);
-  backdrop-filter: blur(10px);
-  color: #e5ccff;
-  padding: 10px 15px;
+.glow {
+  width: 150px;
+  height: 5px;
+  background: linear-gradient(90deg, violet, purple, violet);
   border-radius: 10px;
-  box-shadow: 0 0 10px rgba(150, 0, 255, 0.3);
-  animation: fadeInOut 6s ease-in-out forwards;
-  font-size: 0.95em;
+  animation: flow 2s infinite linear;
 }
 
-@keyframes fadeInOut {
-  0% { opacity: 0; transform: translateY(20px); }
-  10%, 80% { opacity: 1; transform: translateY(0); }
-  100% { opacity: 0; transform: translateY(-20px); }
+/* Subscription Screen */
+#subscription-screen {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
 }
-
-/* 🔹 حركة التبويبات */
-.tab {
-  display: none;
-  animation: fadeSlide 0.5s ease;
-}
-
-.tab.active {
-  display: block;
-}
-
-@keyframes fadeSlide {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* 🔹 باقي التصميم نفس السابق (اشتراك + Wallet) */
-.subscribe-screen {
-  position: fixed;
-  top: 0; left: 0;
-  width: 100%; height: 100%;
-  display: flex; justify-content: center; align-items: center;
-  background: rgba(15, 0, 30, 0.85);
-  z-index: 10; backdrop-filter: blur(10px);
-}
-
-.subscribe-box {
-  background: rgba(40, 0, 80, 0.6);
-  padding: 35px;
-  border-radius: 20px;
+.sub-box {
+  background: rgba(30, 0, 60, 0.6);
+  border-radius: 12px;
+  padding: 20px;
   text-align: center;
-  box-shadow: 0 0 40px rgba(150, 0, 255, 0.4);
-  width: 90%; max-width: 420px;
+  box-shadow: 0 0 20px #8000ff;
 }
-
-.subscribe-box h1 {
-  font-size: 2.3em;
-  color: #c8a8ff;
+.sub-box input {
+  width: 80%;
+  padding: 10px;
+  border-radius: 6px;
+  border: none;
   margin-bottom: 10px;
 }
+.sub-box button {
+  background: #8a2be2;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.buy-key {
+  display: block;
+  margin-top: 10px;
+  color: #b388ff;
+}
+
+/* Navigation */
+nav {
+  display: flex;
+  justify-content: space-around;
+  background: rgba(40, 0, 80, 0.4);
+  padding: 10px;
+  border-top: 1px solid #6a0dad;
+}
+nav button {
+  background: none;
+  color: #b388ff;
+  border: none;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: 0.3s;
+}
+nav button.active {
+  color: #fff;
+  border-bottom: 2px solid #a855f7;
+}
+
+/* Tabs */
+.tab { display: none; }
+.tab.active {
+  display: block;
+  padding: 20px;
+  animation: fadeIn 0.5s;
+}
+
+/* Live Feed */
+.live-feed {
+  position: fixed;
+  bottom: 10px;
+  left: 10px;
+  width: 250px;
+  font-size: 0.9rem;
+  color: #fff;
+}
+.live-feed div {
+  background: rgba(100, 0, 200, 0.2);
+  margin-top: 5px;
+  padding: 8px;
+  border-radius: 8px;
+  animation: fadeInUp 0.6s;
+}
+
+/* Animations */
+@keyframes glowPulse {
+  0%, 100% { text-shadow: 0 0 10px #8a2be2; }
+  50% { text-shadow: 0 0 20px #b388ff; }
+}
+@keyframes flow {
+  0% { transform: translateX(-50%); }
+  100% { transform: translateX(50%); }
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
