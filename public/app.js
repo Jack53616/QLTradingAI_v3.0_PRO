@@ -254,21 +254,25 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // ✅ الذكاء الجديد لتحديد السيرفر الصحيح
   async function apiFetch(url, options = {}) {
-    const headers = {
-      ...(options.headers || {}),
-    };
-    if (state.initData) headers["x-telegram-initdata"] = state.initData;
+  const headers = {
+    ...(options.headers || {}),
+  };
+  if (state.initData) headers["x-telegram-initdata"] = state.initData;
 
-    const base =
-      window.location.hostname.includes("render.com") ||
-      window.location.hostname.includes("t.me")
-        ? "https://qltrading-render.onrender.com"
-        : "";
+  // ✅ اكتشاف تلقائي للمصدر الصحيح (Render أو localhost)
+  const envBase =
+    window.API_BASE_URL ||
+    (window.location.hostname.includes("localhost") ||
+    window.location.hostname.includes("127.0.0.1")
+      ? "http://localhost:10000"
+      : "https://qltrading-render.onrender.com");
 
-    return fetch(base + url, { ...options, headers });
-  }
+  console.log("🌐 API Fetch →", envBase + url); // للتأكد بالكونسول
+
+  return fetch(envBase + url, { ...options, headers });
+}
+
 
   function renderMarkets() {
     marketList.innerHTML = "";
