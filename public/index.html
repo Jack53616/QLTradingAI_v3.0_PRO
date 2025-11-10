@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div id="app" class="safe">
+  <div id="app" class="safe hidden">
     <header class="top glass">
       <div class="t-row">
         <h1 class="brand">QL Wallet</h1>
@@ -15,6 +15,7 @@
           <button id="btnLang" class="i-btn" title="Languages">🌐</button>
         </div>
       </div>
+
       <nav class="seg glass">
         <button class="seg-btn active" data-tab="wallet" data-i18n="tabWallet">Wallet</button>
         <button class="seg-btn" data-tab="markets" data-i18n="tabMarkets">Markets</button>
@@ -31,13 +32,15 @@
     </main>
   </div>
 
-  <div class="lang-switch">
-    <div id="langMenu" class="lang-menu hidden">
-      <div data-lang="en">🇺🇸 English</div>
-      <div data-lang="ar">🇸🇦 العربية</div>
-      <div data-lang="tr">🇹🇷 Türkçe</div>
-      <div data-lang="de">🇩🇪 Deutsch</div>
-    </div>
+  <div id="splash" class="splash-screen">
+    <div class="loader"></div>
+  </div>
+
+  <div id="langMenu" class="lang-menu hidden">
+    <div data-lang="en">🇬🇧 English</div>
+    <div data-lang="ar">🇸🇦 العربية</div>
+    <div data-lang="tr">🇹🇷 Türkçe</div>
+    <div data-lang="de">🇩🇪 Deutsch</div>
   </div>
 
   <script src="app.js"></script>
