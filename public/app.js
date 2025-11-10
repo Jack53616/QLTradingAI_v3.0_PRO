@@ -57,12 +57,12 @@ async function apiFetch(url, options = {}) {
   }
 }
 
-// 🧠 تشغيل التطبيق بعد تحميل الصفحة
+// 🧠 تشغيل التطبيق بعد تحميل الصفحة// 🧠 تشغيل التطبيق بعد تحميل الصفحة
 async function bootstrap() {
   console.log("🚀 Bootstrapping QL Trading AI...");
   await setLanguage(state.lang);
 
-  // تأخير بسيط لتجربة تحميل سلسة
+  // تأخير بسيط للتحميل السلس
   await new Promise((resolve) => setTimeout(resolve, 900));
 
   let profileLoaded = false;
