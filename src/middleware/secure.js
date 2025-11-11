@@ -1,83 +1,52 @@
-import { parseTelegramInitData, verifyTelegramInitData } from "../utils/telegram.js";
 import { log, warn } from "../utils/logger.js";
 
 /**
- * Secure access middleware - Verifies Telegram WebApp authentication
+ * secure.js — TELEGRAM AUTH DISABLED (DANGEROUS)
+ *
+ * This middleware intentionally bypasses Telegram WebApp authentication
+ * and allows all requests to pass through. Use only for local testing
+ * or short debugging sessions. Remove or revert this file as soon as
+ * you finish testing.
+ */
+
+/**
+ * Disabled secureAccess: allow all requests
  */
 export function secureAccess(req, res, next) {
-  const initData = req.get("x-telegram-initdata");
-
-  // Check if initData exists
-  if (!initData) {
-    warn("⚠️ Missing Telegram initData in request", {
-      path: req.path,
-      method: req.method,
-      ip: req.ip
-    });
-    return res.status(401).json({ 
-      ok: false, 
-      error: "telegram_auth_required",
-      message: "This endpoint requires Telegram WebApp authentication"
-    });
-  }
-
-  // Verify initData signature
-  const isValid = verifyTelegramInitData(initData, process.env.BOT_TOKEN);
-  
-  if (!isValid) {
-    warn("⚠️ Invalid Telegram initData signature", {
-      path: req.path,
-      method: req.method,
-      ip: req.ip
-    });
-    return res.status(401).json({ 
-      ok: false, 
-      error: "invalid_telegram_auth",
-      message: "Invalid Telegram authentication data"
-    });
-  }
-
-  // Parse and attach user data
-  const telegramUser = parseTelegramInitData(initData);
-  
-  if (!telegramUser || !telegramUser.id) {
-    warn("⚠️ Failed to parse Telegram user data", {
-      path: req.path,
-      method: req.method
-    });
-    return res.status(401).json({ 
-      ok: false, 
-      error: "invalid_user_data",
-      message: "Could not extract user information"
-    });
-  }
-
-  // Attach telegram user to request
-  req.telegram = telegramUser;
-  
-  log("✅ Telegram authentication successful", {
-    userId: telegramUser.id,
-    username: telegramUser.username,
-    path: req.path
+  // Log a loud warning for every request (optional — helps audit)
+  warn("⚠️ Telegram security check DISABLED — allowing all requests", {
+    path: req.path,
+    method: req.method,
+    ip: req.ip,
   });
 
-  next();
+  // Optionally attach a dummy telegram user if some code expects req.telegram
+  // Comment or remove the block below if you don't want any dummy data attached.
+  if (!req.telegram) {
+    req.telegram = {
+      id: Number(process.env.DEV_USER_ID || 999999999),
+      first_name: process.env.DEV_USER_FIRST_NAME || "DevUser",
+      username: process.env.DEV_USER_USERNAME || "devuser",
+      // you can add other fields your code expects (language_code, last_name, etc.)
+    };
+  }
+
+  return next();
 }
 
 /**
- * Development-only bypass (use with extreme caution)
+ * secureAccessDev kept for compatibility (just calls the disabled secureAccess)
+ * Keeps existing imports/usage unchanged elsewhere in the codebase.
  */
 export function secureAccessDev(req, res, next) {
-  if (process.env.NODE_ENV === "production") {
-    return secureAccess(req, res, next);
+  // Same behaviour: pass all requests
+  warn("⚠️ secureAccessDev: bypassing Telegram auth (disabled globally)");
+  if (!req.telegram) {
+    req.telegram = {
+      id: Number(process.env.DEV_USER_ID || 999999999),
+      first_name: process.env.DEV_USER_FIRST_NAME || "DevUser",
+      username: process.env.DEV_USER_USERNAME || "devuser",
+    };
   }
-
-  // Development mode: allow bypass with warning
-  warn("⚠️ DEVELOPMENT MODE: Bypassing Telegram authentication");
-  req.telegram = {
-    id: parseInt(process.env.DEV_USER_ID || "999999999"),
-    first_name: "DevUser",
-    username: "devuser"
-  };
-  next();
+  return next();
 }
