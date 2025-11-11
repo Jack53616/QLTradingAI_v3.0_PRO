@@ -495,7 +495,7 @@ async function refreshOps(){
   if(!tg) return;
   const r = await fetch(`/api/ops/${tg}`).then(r=>r.json());
   const box = $("#ops"); box.innerHTML = "";
-  if(r.ok){
+  if(r.ok && r.list && Array.isArray(r.list)){
     r.list.forEach(o=>{
       const div = document.createElement("div");
       div.className="op";
@@ -510,7 +510,7 @@ async function refreshRequests(){
   if(!tg) return;
   const r = await fetch(`/api/requests/${tg}`).then(r=>r.json());
   const box = $("#reqList"); box.innerHTML = "";
-  if(r.ok){
+  if(r.ok && r.list && Array.isArray(r.list)){
     r.list.forEach(req=>{
       const div = document.createElement("div");
       div.className="op";

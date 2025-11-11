@@ -16,7 +16,7 @@ activityRouter.get("/ops/:tg", async (req, res) => {
     );
 
     if (!userResult.rows.length) {
-      return res.json({ ok: true, ops: [] });
+      return res.json({ ok: true, list: [] });
     }
 
     const userId = userResult.rows[0].id;
@@ -57,10 +57,10 @@ activityRouter.get("/ops/:tg", async (req, res) => {
     // Sort by date
     ops.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
-    res.json({ ok: true, ops: ops.slice(0, 20) });
+    res.json({ ok: true, list: ops.slice(0, 20) });
   } catch (err) {
     console.error("Ops error:", err);
-    res.json({ ok: true, ops: [] });
+    res.json({ ok: true, list: [] });
   }
 });
 
@@ -77,7 +77,7 @@ activityRouter.get("/requests/:tg", async (req, res) => {
     );
 
     if (!userResult.rows.length) {
-      return res.json({ ok: true, requests: [] });
+      return res.json({ ok: true, list: [] });
     }
 
     const userId = userResult.rows[0].id;
@@ -97,9 +97,9 @@ activityRouter.get("/requests/:tg", async (req, res) => {
       [userId]
     );
 
-    res.json({ ok: true, requests: result.rows });
+    res.json({ ok: true, list: result.rows });
   } catch (err) {
     console.error("Requests error:", err);
-    res.json({ ok: true, requests: [] });
+    res.json({ ok: true, list: [] });
   }
 });

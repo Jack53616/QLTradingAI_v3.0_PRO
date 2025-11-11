@@ -33,8 +33,7 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-app.use(express.static(path.join(__dirname, "../public")));
-
+// API routes (MUST come before static files)
 app.use("/webhook", bot);
 app.use("/api/keys", keysRouter);
 app.use("/api/users", secureAccess, usersRouter);
@@ -44,6 +43,9 @@ app.use("/api/admin", adminRouter);
 app.use("/api/markets", marketsRouter);
 app.use("/api", authRouter);
 app.use("/api", activityRouter);
+
+// Static files (after API routes)
+app.use(express.static(path.join(__dirname, "../public")));
 
 app.get("/healthz", async (_req, res) => {
   try {
