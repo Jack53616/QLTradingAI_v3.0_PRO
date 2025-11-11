@@ -1,4 +1,11 @@
+// 🌍 Supported languages
 const supportedLangs = ["en", "ar", "tr", "de"];
+
+// 🌐 Environment-safe mode
+// NOTE: process.env غير مدعوم في المتصفح، لذا نستخدم متغير ثابت
+const IS_DEV = window.location.hostname.includes("localhost") || window.location.hostname.includes("127.0.0.1");
+
+// 🧠 Global state
 const state = {
   lang: localStorage.getItem("ql_lang") || "en",
   translations: {},
@@ -8,32 +15,31 @@ const state = {
   initData: null,
 };
 
+// 🔹 Telegram WebApp Integration
 const telegram = window.Telegram?.WebApp;
 if (telegram) {
-  telegram.ready();
+  telegram.ready?.();
   telegram.expand?.();
   state.initData = telegram.initData;
 }
 
 const telegramUser = telegram?.initDataUnsafe?.user || null;
 
-// Security: Don't store initData in localStorage
-// Only use it from Telegram WebApp directly
-if (!state.initData && process.env.NODE_ENV === "development") {
+// Development warning (safe)
+if (!state.initData && IS_DEV) {
   console.warn("⚠️ Development mode: No Telegram initData available");
 }
 
-// 🧠 ترجمة النصوص
+// 🧠 Translation helper
 function translate(path) {
   return (
     path
       .split(".")
-      .reduce((acc, key) => (acc && acc[key] !== undefined ? acc[key] : null), state.translations) ||
-    ""
+      .reduce((acc, key) => (acc && acc[key] !== undefined ? acc[key] : null), state.translations) || ""
   );
 }
 
-// 🧩 JSON آمن
+// 🧩 Safe JSON parsing
 async function safeJson(response) {
   if (!response) return {};
   try {
@@ -44,7 +50,7 @@ async function safeJson(response) {
   }
 }
 
-// 🌐 تحميل الترجمات
+// 🌐 Load translations
 async function loadTranslations() {
   try {
     const res = await fetch(`lang/${state.lang}.json`);
@@ -55,7 +61,7 @@ async function loadTranslations() {
   }
 }
 
-// 🌍 تعيين اللغة
+// 🌍 Set language
 async function setLanguage(lang) {
   state.lang = lang;
   localStorage.setItem("ql_lang", lang);
@@ -66,7 +72,7 @@ async function setLanguage(lang) {
   updateProfile();
 }
 
-// 🖋️ تطبيق الترجمات
+// 🖋️ Apply translations to UI
 function applyTranslations() {
   document.querySelectorAll("[data-i18n]").forEach((node) => {
     const key = node.dataset.i18n;
@@ -80,7 +86,7 @@ function applyTranslations() {
   });
 }
 
-// 🎯 تحديث بيانات المستخدم
+// 🎯 Update user info
 function updateProfile() {
   const balanceEl = document.getElementById("balance");
   const userLevelEl = document.getElementById("userLevel");
@@ -89,13 +95,16 @@ function updateProfile() {
   const expiresEl = document.getElementById("expires");
 
   if (!state.user) return;
+
   balanceEl.textContent = `$${Number(state.user.balance || 0).toLocaleString(undefined, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
+
   userLevelEl.textContent = state.user.level || "Bronze";
   userNameEl.textContent = state.user.name || state.user.username || translate("wallet.unknown");
   subscriptionEl.textContent = translate("wallet.subtitle");
+
   if (state.user.sub_expires) {
     const expires = new Date(state.user.sub_expires);
     const now = new Date();
@@ -108,13 +117,12 @@ function updateProfile() {
   }
 }
 
-// ⚙️ دالة الطلبات العامة
+// ⚙️ API Fetch wrapper
 async function apiFetch(url, options = {}) {
   const base =
     window.API_BASE_URL ||
     document.querySelector('meta[name="api-base"]')?.content ||
-    (window.location.hostname.includes("localhost") ||
-    window.location.hostname.includes("127.0.0.1")
+    (IS_DEV
       ? "http://localhost:10000"
       : window.location.origin);
 
@@ -147,12 +155,8 @@ async function apiFetch(url, options = {}) {
 
     if (!res.ok) {
       const errorData = await res.json().catch(() => ({}));
-      console.error(
-        `❌ API Error (${res.status}): ${res.statusText}`,
-        errorData
-      );
-      
-      // Show user-friendly error messages
+      console.error(`❌ API Error (${res.status}): ${res.statusText}`, errorData);
+
       if (res.status === 401) {
         showError(translate("errors.unauthorized") || "Authentication required");
       } else if (res.status === 429) {
@@ -172,9 +176,8 @@ async function apiFetch(url, options = {}) {
   }
 }
 
-// Show error notification
+// 🔔 Error notification
 function showError(message) {
-  // Simple error notification (you can enhance this)
   const errorDiv = document.createElement("div");
   errorDiv.className = "error-notification";
   errorDiv.textContent = message;
@@ -197,13 +200,11 @@ function showError(message) {
   }, 3000);
 }
 
-// 🧱 واجهة العرض
+// 🎛️ UI visibility helpers
 function showElement(el) {
   if (!el || el.classList.contains("is-visible")) return;
   el.classList.remove("hidden");
-  requestAnimationFrame(() => {
-    el.classList.add("is-visible");
-  });
+  requestAnimationFrame(() => el.classList.add("is-visible"));
 }
 
 function hideElement(el) {
@@ -226,7 +227,7 @@ function dismissLoader() {
   );
 }
 
-// 💹 الأسواق والصفقات
+// 💹 Markets
 function renderMarkets() {
   const marketList = document.getElementById("marketList");
   marketList.innerHTML = "";
@@ -257,6 +258,7 @@ function renderMarkets() {
   });
 }
 
+// 📊 Trades
 function renderTrades() {
   const tradeList = document.getElementById("tradeList");
   if (!state.trades.length) {
@@ -281,7 +283,7 @@ function renderTrades() {
   });
 }
 
-// 🔁 تحديث البيانات
+// 🔁 Dashboard loader
 async function loadDashboard(silent = false) {
   try {
     const [userRes, marketsRes, tradesRes] = await Promise.all([
@@ -314,7 +316,7 @@ async function loadDashboard(silent = false) {
   }
 }
 
-// 🚀 التشغيل الرئيسي
+// 🚀 Boot
 async function bootstrap() {
   console.log("🚀 Bootstrapping QL Trading AI...");
   await setLanguage(state.lang);
@@ -350,22 +352,19 @@ async function bootstrap() {
   }
 }
 
-// Event listeners
+// 🧭 DOM Ready
 document.addEventListener("DOMContentLoaded", () => {
   bootstrap();
 
-  // Language switcher
   document.getElementById("langBtn")?.addEventListener("click", () => {
     const nextLang = supportedLangs[(supportedLangs.indexOf(state.lang) + 1) % supportedLangs.length];
     setLanguage(nextLang);
   });
 
-  // Refresh button
   document.getElementById("refreshBtn")?.addEventListener("click", () => {
     loadDashboard();
   });
 
-  // Tab switching
   document.querySelectorAll(".tabs button").forEach((btn) => {
     btn.addEventListener("click", () => {
       const tabName = btn.dataset.tab;
@@ -376,7 +375,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // Key activation
   document.getElementById("activateKey")?.addEventListener("click", async () => {
     const keyInput = document.getElementById("keyInput");
     const statusEl = document.getElementById("activationStatus");
@@ -407,9 +405,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (res.ok && data.ok) {
         statusEl.textContent = translate("subscription.success") || "Activated successfully!";
         statusEl.style.color = "#10b981";
-        setTimeout(() => {
-          window.location.reload();
-        }, 1500);
+        setTimeout(() => window.location.reload(), 1500);
       } else {
         statusEl.textContent = data.message || translate("subscription.failed") || "Activation failed";
         statusEl.style.color = "#ef4444";
@@ -420,7 +416,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  // Withdrawal form
   document.getElementById("withdrawForm")?.addEventListener("submit", async (e) => {
     e.preventDefault();
     const statusEl = document.getElementById("withdrawStatus");
@@ -443,9 +438,7 @@ document.addEventListener("DOMContentLoaded", () => {
         statusEl.textContent = translate("withdraw.success") || "Request submitted successfully!";
         statusEl.style.color = "#10b981";
         e.target.reset();
-        setTimeout(() => {
-          statusEl.textContent = "";
-        }, 3000);
+        setTimeout(() => (statusEl.textContent = ""), 3000);
       } else {
         statusEl.textContent = data.message || translate("withdraw.failed") || "Request failed";
         statusEl.style.color = "#ef4444";
