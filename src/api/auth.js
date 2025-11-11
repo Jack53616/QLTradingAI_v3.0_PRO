@@ -30,7 +30,7 @@ authRouter.post("/activate", async (req, res) => {
     // Check if key exists and is valid
     const keyResult = await pool.query(
       "SELECT * FROM keys WHERE key_code = $1",
-      [key]
+      [keyHash]
     );
 
     if (!keyResult.rows.length) {
@@ -78,7 +78,7 @@ authRouter.post("/activate", async (req, res) => {
     // Mark key as used
     await pool.query(
       "UPDATE keys SET used_by = $1, used_at = NOW() WHERE key_code = $2",
-      [user.id, key]
+      [user.id, keyHash]
     );
 
     res.json({ ok: true, user });
