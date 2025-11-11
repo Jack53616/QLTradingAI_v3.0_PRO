@@ -38,10 +38,16 @@ body.is-gated #gate{
 }
 
 body:not(.is-gated) #gate{
+  opacity: 0;
   pointer-events:none;
+  visibility: hidden;
 }
 
-.hidden{display:none}
+.hidden{
+  display:none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
 
 .splash{
   position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
@@ -59,6 +65,7 @@ body:not(.is-gated) #gate{
   position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
   z-index:50;
   overflow:hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 .gate::before{
   content:"";

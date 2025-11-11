@@ -171,9 +171,14 @@ function showGate() {
 }
 
 function unlockGate() {
+  // Remove gated class first
   document.body.classList.remove("is-gated");
-  $("#gate")?.classList.add("hidden");
-  $("#app")?.classList.remove("hidden");
+  
+  // Add a small delay to ensure smooth transition
+  setTimeout(() => {
+    $("#gate")?.classList.add("hidden");
+    $("#app")?.classList.remove("hidden");
+  }, 100);
 }
 
 // Activate Key
@@ -208,10 +213,16 @@ gateBtn?.addEventListener("click", async () => {
     }
 
     toast("✅ Activated successfully!");
-    $("#g-key").value = "";
     
-    // Load user data and open app
-    await openApp();
+    // Clear inputs
+    $("#g-key").value = "";
+    $("#g-name").value = "";
+    $("#g-email").value = "";
+    
+    // Small delay before opening app for better UX
+    setTimeout(async () => {
+      await openApp();
+    }, 500);
   } catch (err) {
     console.error("Activation failed", err);
     toast("Connection error");
