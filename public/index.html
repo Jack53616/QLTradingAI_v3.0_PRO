@@ -188,6 +188,10 @@
             </div>
             <div class="market-price">$—</div>
             <canvas class="market-chart" width="340" height="60"></canvas>
+            <div class="market-actions">
+              <button class="btn-trade buy" data-symbol="XAUUSD" data-type="buy">Buy</button>
+              <button class="btn-trade sell" data-symbol="XAUUSD" data-type="sell">Sell</button>
+            </div>
           </div>
           
           <div class="market-card glass" data-symbol="XAGUSD">
@@ -197,6 +201,10 @@
             </div>
             <div class="market-price">$—</div>
             <canvas class="market-chart" width="340" height="60"></canvas>
+            <div class="market-actions">
+              <button class="btn-trade buy" data-symbol="XAGUSD" data-type="buy">Buy</button>
+              <button class="btn-trade sell" data-symbol="XAGUSD" data-type="sell">Sell</button>
+            </div>
           </div>
           
           <div class="market-card glass" data-symbol="BTCUSDT">
@@ -206,6 +214,10 @@
             </div>
             <div class="market-price">$—</div>
             <canvas class="market-chart" width="340" height="60"></canvas>
+            <div class="market-actions">
+              <button class="btn-trade buy" data-symbol="BTCUSDT" data-type="buy">Buy</button>
+              <button class="btn-trade sell" data-symbol="BTCUSDT" data-type="sell">Sell</button>
+            </div>
           </div>
           
           <div class="market-card glass" data-symbol="ETHUSDT">
@@ -215,6 +227,10 @@
             </div>
             <div class="market-price">$—</div>
             <canvas class="market-chart" width="340" height="60"></canvas>
+            <div class="market-actions">
+              <button class="btn-trade buy" data-symbol="ETHUSDT" data-type="buy">Buy</button>
+              <button class="btn-trade sell" data-symbol="ETHUSDT" data-type="sell">Sell</button>
+            </div>
           </div>
         </div>
       </section>
@@ -255,6 +271,14 @@
           
           <div class="card glass" style="margin-top: 16px;">
             <h3 class="card-title" data-i18n="deposit">Deposit</h3>
+            <p class="note" style="margin-bottom: 12px;">Add funds to your wallet</p>
+            
+            <div class="deposit-form">
+              <input type="number" id="depositAmount" class="input-field" placeholder="Amount (USD)" min="10">
+              <button id="depositBtn" class="btn btn-primary">Add Funds</button>
+            </div>
+            
+            <p class="note" style="margin-top: 12px;">Or contact support:</p>
             <a href="https://wa.me/message/P6BBPSDL2CC4D1" target="_blank" class="btn btn-secondary">
               WhatsApp
             </a>

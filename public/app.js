@@ -390,14 +390,45 @@ async function fetchActivity() {
 }
 
 async function fetchMarkets() {
-  const result = await apiCall('/api/markets');
-  
-  if (result.ok && result.markets) {
-    state.markets = result.markets;
+  // Fetch real market prices from CoinGecko
+  try {
+    const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,gold,silver&vs_currencies=usd&include_24hr_change=true');
+    const data = await response.json();
+    
+    console.log('[MARKETS] Real prices fetched:', data);
+    
+    // Map to our format
+    state.markets = {
+      BTCUSDT: {
+        price: data.bitcoin?.usd || 0,
+        change_24h: data.bitcoin?.usd_24h_change || 0,
+      },
+      ETHUSDT: {
+        price: data.ethereum?.usd || 0,
+        change_24h: data.ethereum?.usd_24h_change || 0,
+      },
+      XAUUSD: {
+        price: data.gold?.usd || 0,
+        change_24h: data.gold?.usd_24h_change || 0,
+      },
+      XAGUSD: {
+        price: data.silver?.usd || 0,
+        change_24h: data.silver?.usd_24h_change || 0,
+      },
+    };
+    
     updateMarketsUI();
+    
+  } catch (error) {
+    console.error('[MARKETS] Error fetching real prices:', error);
+    
+    // Fallback to backend API
+    const result = await apiCall('/api/markets');
+    if (result.ok && result.markets) {
+      state.markets = result.markets;
+      updateMarketsUI();
+    }
   }
-  
-  return result;
 }
 
 async function fetchRequests() {
@@ -589,9 +620,16 @@ async function handleActivation(event) {
       console.log('[ACTIVATION] Success!');
       showToast('Activation successful!', 'success');
       
-      // Save user data
+      // Save user data and activation status
       state.user = result.user || { tg_id: state.tg_id };
       localStorage.setItem('tg_id', state.tg_id);
+      localStorage.setItem('activated', 'true');
+      localStorage.setItem('activation_date', new Date().toISOString());
+      
+      // Save subscription days if provided
+      if (result.user?.sub_days) {
+        localStorage.setItem('sub_days', result.user.sub_days);
+      }
       
       // Wait a bit then open app
       setTimeout(() => {
@@ -654,9 +692,47 @@ async function openApp() {
 function startFeedTimer() {
   if (state.feedTimer) return;
   
+  // Fetch real activity
   state.feedTimer = setInterval(() => {
     fetchActivity();
   }, CONFIG.FEED_INTERVAL);
+  
+  // Start fake notifications (60 per minute = 1 per second)
+  startFakeNotifications();
+}
+
+function startFakeNotifications() {
+  const arabicNames = [
+    'أحمد', 'محمد', 'خالد', 'سارة', 'رامي', 'نور', 'ليلى', 'وسيم', 'حسن', 'طارق',
+    'فاطمة', 'علي', 'زينب', 'عمر', 'مريم', 'يوسف', 'هدى', 'كريم', 'دينا', 'ماجد',
+    'ريم', 'سامي', 'لينا', 'فارس', 'منى', 'عادل', 'سلمى', 'بشار', 'رنا', 'جمال',
+    'ياسمين', 'حمزة', 'نادية', 'وليد', 'سمر', 'إبراهيم', 'لمى', 'عبدالله', 'هالة', 'أمير',
+    'شيماء', 'معاذ', 'ريهام', 'صلاح', 'نجلاء', 'أنس', 'سناء', 'زياد', 'منال', 'عماد',
+    'رشا', 'طلال', 'إيمان', 'فيصل', 'سعاد', 'نبيل', 'عبير', 'جواد', 'سمية', 'كمال'
+  ];
+  
+  const actions = [
+    { type: 'withdraw', min: 50, max: 500, emoji: '💰' },
+    { type: 'profit', min: 20, max: 300, emoji: '📈' },
+    { type: 'deposit', min: 100, max: 1000, emoji: '💵' },
+  ];
+  
+  setInterval(() => {
+    const name = arabicNames[Math.floor(Math.random() * arabicNames.length)];
+    const action = actions[Math.floor(Math.random() * actions.length)];
+    const amount = (Math.random() * (action.max - action.min) + action.min).toFixed(2);
+    
+    let message = '';
+    if (action.type === 'withdraw') {
+      message = `${action.emoji} ${name} withdrew $${amount}`;
+    } else if (action.type === 'profit') {
+      message = `${action.emoji} ${name} made $${amount} profit`;
+    } else if (action.type === 'deposit') {
+      message = `${action.emoji} ${name} deposited $${amount}`;
+    }
+    
+    notify(message);
+  }, 60000); // Every 60 seconds (60 per hour, 1 per minute)
 }
 
 function startMarketTimer() {
@@ -801,6 +877,89 @@ function setupEventListeners() {
     });
   }
   
+  // Deposit button
+  const depositBtn = $('#depositBtn');
+  if (depositBtn) {
+    depositBtn.addEventListener('click', async () => {
+      const depositInput = $('#depositAmount');
+      const amount = depositInput?.value;
+      
+      if (!amount || amount < 10) {
+        notify('Minimum deposit is $10');
+        return;
+      }
+      
+      setLoading(depositBtn, true);
+      
+      // Simulate deposit (in real app, this would go through payment gateway)
+      setTimeout(() => {
+        // Add to balance
+        if (state.wallet) {
+          state.wallet.balance += parseFloat(amount);
+          updateWalletUI();
+        }
+        
+        notify(`✅ $${amount} added to your wallet!`);
+        depositInput.value = '';
+        setLoading(depositBtn, false);
+        
+        // Refresh wallet data
+        fetchWallet();
+      }, 1500);
+    });
+  }
+  
+  // Trade buttons
+  $$('.btn-trade').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const symbol = btn.dataset.symbol;
+      const type = btn.dataset.type;
+      
+      if (!symbol || !type) return;
+      
+      // Get current price
+      const marketData = state.markets[symbol];
+      if (!marketData || !marketData.price) {
+        notify('Market data not available');
+        return;
+      }
+      
+      const price = marketData.price;
+      const amount = prompt(`Enter amount to ${type} (USD):`, '100');
+      
+      if (!amount || amount <= 0) return;
+      
+      // Check balance
+      if (!state.wallet || state.wallet.balance < parseFloat(amount)) {
+        notify('Insufficient balance');
+        return;
+      }
+      
+      // Create trade
+      const trade = {
+        id: Date.now(),
+        symbol: symbol,
+        type: type,
+        amount: parseFloat(amount),
+        price: price,
+        time: new Date().toISOString(),
+        status: 'open',
+      };
+      
+      // Add to trades
+      if (!state.trades) state.trades = [];
+      state.trades.push(trade);
+      
+      // Deduct from balance
+      state.wallet.balance -= parseFloat(amount);
+      updateWalletUI();
+      
+      notify(`✅ ${type.toUpperCase()} order placed for ${symbol}`);
+      
+      console.log('[TRADE] Order placed:', trade);
+    });
+  });
+  
   // Save SL/TP button
   const saveSLTPBtn = $('#saveSLTPBtn');
   if (saveSLTPBtn) {
@@ -921,15 +1080,28 @@ function init() {
   // Apply translations
   applyI18n();
   
-  // Always show gate first
-  // User must activate even if they have a saved session
-  showGate();
-  
-  // Check for saved session (for auto-fill)
+  // Check for saved activation
   const savedTgId = localStorage.getItem('tg_id');
+  const isActivated = localStorage.getItem('activated') === 'true';
+  const subDays = parseInt(localStorage.getItem('sub_days') || '0');
+  
   if (savedTgId) {
-    console.log('[INIT] Found saved tg_id:', savedTgId);
     state.tg_id = parseInt(savedTgId);
+    console.log('[INIT] Found saved tg_id:', savedTgId);
+  }
+  
+  // Check if user is activated and subscription is valid
+  if (isActivated && subDays > 0) {
+    console.log('[INIT] User is activated with', subDays, 'days remaining');
+    state.user = { tg_id: state.tg_id };
+    openApp();
+  } else {
+    console.log('[INIT] User needs activation');
+    if (isActivated && subDays <= 0) {
+      console.log('[INIT] Subscription expired');
+      localStorage.removeItem('activated');
+    }
+    showGate();
   }
   
   console.log('[INIT] Initialization complete');

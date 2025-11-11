@@ -865,3 +865,314 @@ body[dir="rtl"] {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-secondary);
 }
+
+/* ========================================
+   ENHANCED FEATURES
+   ======================================== */
+
+/* Market Actions */
+.market-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.btn-trade {
+  flex: 1;
+  padding: 10px 16px;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-transform: uppercase;
+}
+
+.btn-trade.buy {
+  background: linear-gradient(135deg, var(--success), #0ba360);
+  color: white;
+  box-shadow: 0 4px 12px rgba(14, 203, 129, 0.3);
+}
+
+.btn-trade.buy:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(14, 203, 129, 0.4);
+}
+
+.btn-trade.sell {
+  background: linear-gradient(135deg, var(--danger), #c23b4a);
+  color: white;
+  box-shadow: 0 4px 12px rgba(246, 70, 93, 0.3);
+}
+
+.btn-trade.sell:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(246, 70, 93, 0.4);
+}
+
+/* Deposit Form */
+.deposit-form {
+  display: flex;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.deposit-form .input-field {
+  flex: 1;
+}
+
+.deposit-form .btn {
+  flex-shrink: 0;
+}
+
+/* Enhanced Balance Card */
+.balance-card {
+  background: linear-gradient(135deg, rgba(110, 64, 255, 0.1), rgba(82, 42, 203, 0.05));
+  border: 1px solid rgba(110, 64, 255, 0.2);
+}
+
+.balance-card::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(110, 64, 255, 0.1) 0%, transparent 70%);
+  animation: pulse 4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+/* Enhanced Market Cards */
+.market-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.market-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transition: left 0.5s;
+}
+
+.market-card:hover::before {
+  left: 100%;
+}
+
+/* Enhanced Glass Effect */
+.glass {
+  position: relative;
+  overflow: hidden;
+}
+
+.glass::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.03) 50%, transparent 70%);
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+
+/* Enhanced Buttons */
+.btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.btn:active::before {
+  width: 300px;
+  height: 300px;
+}
+
+/* Enhanced Feed Items */
+.feed-item {
+  position: relative;
+  padding-left: 16px;
+}
+
+.feed-item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 60%;
+  background: var(--success);
+  border-radius: 2px;
+}
+
+/* Shimmer Effect for Loading */
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.loading-shimmer {
+  background: linear-gradient(90deg, var(--bg-secondary) 0%, var(--bg-tertiary) 50%, var(--bg-secondary) 100%);
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* Enhanced Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(135deg, var(--accent-secondary), var(--accent-primary));
+}
+
+/* Floating Animation */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.vip-badge {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Glow Animation */
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 20px var(--accent-glow), 0 0 40px var(--accent-glow);
+  }
+  50% {
+    box-shadow: 0 0 30px var(--accent-glow), 0 0 60px var(--accent-glow), 0 0 80px var(--accent-glow);
+  }
+}
+
+.neon {
+  animation: glow 2s ease-in-out infinite;
+}
+
+/* Professional Shadows */
+.card {
+  box-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.1),
+    0 8px 16px rgba(0, 0, 0, 0.1),
+    0 16px 32px rgba(0, 0, 0, 0.1);
+}
+
+.card:hover {
+  box-shadow: 
+    0 4px 8px rgba(0, 0, 0, 0.15),
+    0 12px 24px rgba(0, 0, 0, 0.15),
+    0 24px 48px rgba(0, 0, 0, 0.15);
+}
+
+/* Enhanced Typography */
+.balance-amount {
+  text-shadow: 0 2px 8px rgba(110, 64, 255, 0.3);
+  letter-spacing: -1px;
+}
+
+.app-brand {
+  text-shadow: 0 2px 8px rgba(110, 64, 255, 0.5);
+}
+
+/* Smooth Transitions */
+* {
+  transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
+  transition-duration: 0.2s;
+  transition-timing-function: ease-in-out;
+}
+
+button, a, input {
+  transition-duration: 0.15s;
+}
+
+/* Professional Gradients */
+.gradient-text {
+  background: linear-gradient(135deg, var(--accent-primary), #8b5cf6, var(--accent-secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Enhanced Input Focus */
+.input-field:focus {
+  box-shadow: 0 0 0 3px rgba(110, 64, 255, 0.1);
+  transform: translateY(-1px);
+}
+
+/* Professional Loading State */
+.btn:disabled {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn:disabled::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
