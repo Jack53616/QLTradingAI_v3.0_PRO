@@ -108,7 +108,11 @@ window.addEventListener("DOMContentLoaded", async () => {
   // Try to open app
   setTimeout(async () => {
     const opened = await openApp();
-    if (!opened) {
+    if (opened) {
+      // User is authenticated, show the app
+      hideGate();
+    } else {
+      // User not found, show gate (activation screen)
       showGate();
     }
   }, 2600);
