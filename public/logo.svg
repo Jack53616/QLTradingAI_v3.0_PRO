@@ -1,72 +1,10 @@
-<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Background Circle with Gradient -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
   <defs>
-    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" style="stop-color:#8250ff;stop-opacity:1" />
       <stop offset="100%" style="stop-color:#522acb;stop-opacity:1" />
     </linearGradient>
-    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#00ffd5;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#00d4b8;stop-opacity:1" />
-    </linearGradient>
-    <filter id="glow">
-      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
-      <feMerge>
-        <feMergeNode in="coloredBlur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
   </defs>
-  
-  <!-- Main Circle Background -->
-  <circle cx="100" cy="100" r="90" fill="url(#bgGrad)" opacity="0.15"/>
-  
-  <!-- Q Letter -->
-  <g filter="url(#glow)">
-    <!-- Q Circle -->
-    <path d="M 100 40 
-             A 40 40 0 1 1 100 140
-             A 40 40 0 1 1 100 40 Z
-             M 100 55
-             A 25 25 0 1 0 100 125
-             A 25 25 0 1 0 100 55 Z"
-          fill="url(#bgGrad)"/>
-    
-    <!-- Q Tail -->
-    <path d="M 120 120 L 135 135" 
-          stroke="url(#bgGrad)" 
-          stroke-width="15" 
-          stroke-linecap="round"/>
-  </g>
-  
-  <!-- L Letter -->
-  <g filter="url(#glow)">
-    <path d="M 150 60 L 150 140 L 180 140" 
-          stroke="url(#accentGrad)" 
-          stroke-width="15" 
-          stroke-linecap="round" 
-          stroke-linejoin="round"
-          fill="none"/>
-  </g>
-  
-  <!-- Decorative Elements - Trading Chart Line -->
-  <g opacity="0.6">
-    <path d="M 30 160 L 50 150 L 70 155 L 90 145 L 110 150 L 130 140 L 150 145 L 170 135" 
-          stroke="url(#accentGrad)" 
-          stroke-width="2" 
-          fill="none"
-          stroke-linecap="round"/>
-    <!-- Chart Points -->
-    <circle cx="30" cy="160" r="3" fill="url(#accentGrad)"/>
-    <circle cx="70" cy="155" r="3" fill="url(#accentGrad)"/>
-    <circle cx="110" cy="150" r="3" fill="url(#accentGrad)"/>
-    <circle cx="150" cy="145" r="3" fill="url(#accentGrad)"/>
-    <circle cx="170" cy="135" r="3" fill="url(#accentGrad)"/>
-  </g>
-  
-  <!-- AI Spark/Star -->
-  <g transform="translate(160, 50)" opacity="0.8">
-    <path d="M 0 -8 L 2 -2 L 8 0 L 2 2 L 0 8 L -2 2 L -8 0 L -2 -2 Z" 
-          fill="url(#accentGrad)"/>
-  </g>
+  <rect width="100" height="100" rx="20" fill="url(#grad)"/>
+  <text x="50" y="70" text-anchor="middle" fill="white" font-size="48" font-weight="900" font-family="Arial, sans-serif">QL</text>
 </svg>

@@ -17,6 +17,27 @@ usersRouter.get("/", ensureAdmin, async (_req, res) => {
 });
 
 // 🧠 Get current user
+// 🔍 Get user by Telegram ID
+usersRouter.get("/:tg", async (req, res) => {
+  try {
+    const tgId = Number(req.params.tg);
+    if (!tgId) return res.status(400).json({ ok: false, error: "invalid_tg_id" });
+
+    const { rows } = await pool.query(
+      "SELECT id, tg_id, name, email, level, balance, sub_expires FROM users WHERE tg_id = $1",
+      [tgId]
+    );
+
+    if (!rows.length) {
+      return res.json({ ok: false, error: "user_not_found" });
+    }
+
+    res.json({ ok: true, user: rows[0] });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 usersRouter.get("/me", async (req, res) => {
   try {
     const userId = req.telegram?.id || process.env.DEV_USER_ID || 999999999;

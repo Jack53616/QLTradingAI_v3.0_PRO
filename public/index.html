@@ -1,284 +1,173 @@
 <!doctype html>
-<html lang="ar" dir="rtl">
+<html lang="en">
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
-  <title>QL Trading AI - Professional Crypto Wallet</title>
-  <meta name="description" content="منصة تداول احترافية مدعومة بالذكاء الاصطناعي"/>
-  <meta name="theme-color" content="#0B0E11"/>
-  
-  <!-- Telegram WebApp -->
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>QL Trading AI</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  
-  <!-- Styles -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="./style.css"/>
 </head>
 <body>
 
-  <!-- ============================================ -->
-  <!-- SPLASH SCREEN -->
-  <!-- ============================================ -->
+  <!-- Splash / Logo -->
   <div id="splash" class="splash">
-    <div class="splash-content">
-      <div class="logo-container">
-        <img src="./logo.png" alt="QL Trading AI" class="logo-main"/>
-        <div class="logo-glow"></div>
-      </div>
-      <h1 class="splash-title">QL Trading AI</h1>
-      <p class="splash-subtitle">Professional Crypto Wallet</p>
-      <div class="splash-loader">
-        <div class="loader-bar"></div>
-      </div>
+    <div class="logo-wrap">
+      <img src="./logo.svg" alt="QL" class="logo"/>
+      <div class="logo-text">QL Trading AI</div>
     </div>
   </div>
 
-  <!-- ============================================ -->
-  <!-- GATE (ACTIVATION SCREEN) -->
-  <!-- ============================================ -->
-  <div id="gate" class="gate hidden">
-    <div class="gate-bg"></div>
-    <div class="gate-content">
-      <div class="gate-card">
-        <!-- Header -->
-        <div class="gate-header">
-          <div class="gate-logo">
-            <img src="./logo.png" alt="QL" class="gate-logo-img"/>
-          </div>
-          <h2 class="gate-title">QL Trading AI</h2>
-          <p class="gate-subtitle">أدخل مفتاح الاشتراك لتفعيل حسابك</p>
-        </div>
-
-        <!-- Form -->
-        <div class="gate-form">
-          <div class="input-group">
-            <input 
-              type="text" 
-              id="g-name" 
-              class="input-field" 
-              placeholder="الاسم (اختياري)"
-              autocomplete="name"
-            />
-            <span class="input-icon">👤</span>
-          </div>
-
-          <div class="input-group">
-            <input 
-              type="email" 
-              id="g-email" 
-              class="input-field" 
-              placeholder="البريد الإلكتروني (اختياري)"
-              autocomplete="email"
-            />
-            <span class="input-icon">✉️</span>
-          </div>
-
-          <div class="input-group">
-            <input 
-              type="text" 
-              id="g-key" 
-              class="input-field" 
-              placeholder="أدخل مفتاح الاشتراك..."
-              autocomplete="off"
-            />
-            <span class="input-icon">🔑</span>
-          </div>
-
-          <!-- Actions -->
-          <div class="gate-actions">
-            <button id="g-activate" class="btn btn-primary">
-              <span class="btn-text">تفعيل الآن</span>
-            </button>
-            <button id="g-buy" class="btn btn-secondary">
-              شراء مفتاح اشتراك
-            </button>
-          </div>
-
-          <!-- Toast -->
-          <div id="g-toast" class="gate-toast"></div>
-        </div>
-
-        <!-- Footer -->
-        <div class="gate-footer">
-          <p class="gate-footer-text">
-            <span class="gate-footer-icon">🛡️</span>
-            محمي بتقنية Telegram WebApp
-          </p>
-        </div>
+  <!-- Subscription Gate -->
+  <div id="gate" class="gate">
+    <video class="bg" src="./bg.mp4" autoplay muted loop playsinline></video>
+    <div class="glass card gate-card">
+      <div class="g-title" data-i18n="gateTitle">QL Trading — Access</div>
+      <div class="g-sub" data-i18n="gateSub">Enter your subscription key to unlock your wallet</div>
+      <input id="g-name" class="input" placeholder="Name / الاسم"/>
+      <input id="g-email" class="input" placeholder="Email"/>
+      <input id="g-key" class="input" placeholder="Enter key..."/>
+      <div class="row">
+        <button id="g-activate" class="btn" data-i18n="confirm">Confirm</button>
+        <a id="g-buy" class="btn ghost" href="https://wa.me/message/P6BBPSDL2CC4D1" target="_blank" data-i18n="buyKey">Buy a key</a>
       </div>
+      <div id="g-toast" class="toast"></div>
     </div>
   </div>
 
-  <!-- ============================================ -->
-  <!-- MAIN APP -->
-  <!-- ============================================ -->
-  <div id="app" class="app hidden">
-    <!-- Top Bar -->
-    <div class="top-bar">
-      <div class="container">
-        <div class="top-row">
-          <div class="brand">
-            <img src="./logo.png" alt="QL" class="brand-logo"/>
-            <span class="brand-text">QL Trading</span>
-          </div>
-          <div class="top-actions">
-            <button id="notifBtn" class="icon-btn" title="الإشعارات">
-              <span>🔔</span>
-            </button>
-            <button id="settingsBtn" class="icon-btn" title="الإعدادات">
-              <span>⚙️</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Tabs -->
-        <div class="tabs-container">
-          <button class="tab-btn active" data-tab="home">
-            <span class="tab-icon">🏠</span>
-            <span class="tab-label">الرئيسية</span>
-          </button>
-          <button class="tab-btn" data-tab="markets">
-            <span class="tab-icon">📊</span>
-            <span class="tab-label">الأسواق</span>
-          </button>
-          <button class="tab-btn" data-tab="trades">
-            <span class="tab-icon">💼</span>
-            <span class="tab-label">الصفقات</span>
-          </button>
-          <button class="tab-btn" data-tab="activity">
-            <span class="tab-icon">📈</span>
-            <span class="tab-label">النشاط</span>
-          </button>
+  <!-- Wallet -->
+  <div id="app" class="safe hidden">
+    <header class="top glass">
+      <div class="t-row">
+        <h1 class="brand">QL Wallet</h1>
+        <div class="actions">
+          <button id="btnMusic" class="i-btn" title="Music">🎵</button>
+          <button id="btnLang" class="i-btn" title="Languages">🌐</button>
         </div>
       </div>
-    </div>
+      <nav class="seg glass">
+        <button class="seg-btn active" data-tab="wallet" data-i18n="tabWallet">Home</button>
+        <button class="seg-btn" data-tab="markets" data-i18n="tabMarkets">Markets</button>
+        <button class="seg-btn" data-tab="trades" data-i18n="tabTrades">Trades</button>
+        <button class="seg-btn" data-tab="withdraw" data-i18n="tabWithdraw">Withdraw</button>
+        <button class="seg-btn" data-tab="requests" data-i18n="tabRequests">Requests</button>
+        <button class="seg-btn" data-tab="support" data-i18n="tabSupport">Support</button>
+      </nav>
+    </header>
 
-    <!-- Content -->
-    <div class="content">
-      <div class="container">
-        
-        <!-- HOME TAB -->
-        <div id="home" class="tab-content show">
-          <!-- Balance Card -->
-          <div class="balance-card">
-            <div class="balance-header">
-              <span class="balance-label">الرصيد الإجمالي</span>
-              <span id="userLevel" class="level-badge">Bronze</span>
-            </div>
-            <div class="balance-main">
-              <h1 id="balance" class="balance-value">$0.00</h1>
-              <span id="ticker" class="balance-change" style="color: var(--accent-green)">+0.00</span>
-            </div>
-            <div class="balance-chart">
-              <svg viewBox="0 0 100 24" preserveAspectRatio="none">
-                <path id="chartPath" d="M0,18 C15,12 22,16 30,15 C40,14 52,10 60,12 C70,14 82,12 100,12" />
-              </svg>
-            </div>
-            <div class="balance-footer">
-              <div class="balance-info">
-                <span class="info-label">الاشتراك</span>
-                <span id="subLeft" class="info-value">—</span>
-              </div>
-              <button id="withdrawBtn" class="btn btn-primary btn-sm">
-                <span>💰 سحب</span>
-              </button>
-            </div>
+    <main>
+      <!-- Wallet Tab -->
+      <section id="tab-wallet" class="tab show">
+        <div class="balance glass neon">
+          <div class="badge">👑 VIP Gold</div>
+          <div class="b-row">
+            <div id="balance" class="b-val">$0.00</div>
+            <div id="ticker" class="pnl">+0.00</div>
+          </div>
+          <div id="tradeBadge" class="muted" data-i18n="noOpenTrade">No open trade</div>
+          <div class="chart">
+            <svg viewBox="0 0 100 28"><path id="chartPath" d="M0,18 C15,12 22,16 30,15 C40,14 52,10 60,12 C70,14 82,11 100,12"/></svg>
           </div>
 
-          <!-- Quick Stats -->
-          <div class="stats-grid">
-            <div class="stat-card">
-              <div class="stat-icon">📈</div>
-              <div class="stat-content">
-                <span class="stat-label">الأرباح</span>
-                <span id="profitValue" class="stat-value">$0.00</span>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon">💼</div>
-              <div class="stat-content">
-                <span class="stat-label">الصفقات</span>
-                <span id="tradesCount" class="stat-value">0</span>
-              </div>
-            </div>
-            <div class="stat-card">
-              <div class="stat-icon">🎯</div>
-              <div class="stat-content">
-                <span class="stat-label">النجاح</span>
-                <span id="successRate" class="stat-value">0%</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Live Activity Feed -->
-          <h2 class="section-title">النشاط المباشر</h2>
-          <div id="homeFeed" class="activity-feed">
-            <!-- Activity items will be loaded here -->
+          <div class="quick">
+            <button class="qa" id="goWithdraw">⬇<small data-i18n="withdraw">Withdraw</small></button>
+            <button class="qa" id="goMarkets">📈<small data-i18n="markets">Markets</small></button>
+            <button class="qa" id="goSupport">🛟<small data-i18n="support">Support</small></button>
           </div>
         </div>
 
-        <!-- MARKETS TAB -->
-        <div id="markets" class="tab-content">
-          <h2 class="section-title">الأسواق المباشرة</h2>
-          <div id="marketsGrid" class="markets-grid">
-            <!-- Markets will be loaded here -->
-          </div>
+        <div class="stats">
+          <div class="stat glass"><div data-i18n="day">Day</div><b id="pnlDay">$0.00</b></div>
+          <div class="stat glass"><div data-i18n="month">Month</div><b id="pnlMonth">$0.00</b></div>
+          <div class="stat glass"><div data-i18n="subLeft">Subscription</div><b id="subLeft">—</b></div>
         </div>
 
-        <!-- TRADES TAB -->
-        <div id="trades" class="tab-content">
-          <h2 class="section-title">صفقاتي النشطة</h2>
-          <div id="tradesList" class="trades-list">
-            <!-- Trades will be loaded here -->
-          </div>
+        <div class="card glass">
+          <div class="c-title" data-i18n="recent">Recent activity</div>
+          <div id="ops" class="ops"></div>
         </div>
 
-        <!-- ACTIVITY TAB -->
-        <div id="activity" class="tab-content">
-          <h2 class="section-title">سجل النشاط الكامل</h2>
-          <div id="feed" class="activity-feed">
-            <!-- Full activity feed will be loaded here -->
+        <div class="card glass">
+          <div class="c-title" data-i18n="live">Live feed</div>
+          <div id="feed" class="feed"></div>
+        </div>
+      </section>
+
+      <!-- Markets -->
+      <section id="tab-markets" class="tab">
+        <div class="grid">
+          <div class="mkt glass" data-sym="XAUUSD"><div class="mh"><b>Gold</b><span class="pct">+0.0%</span></div><div class="price">$—</div><canvas class="spark" width="340" height="60"></canvas></div>
+          <div class="mkt glass" data-sym="XAGUSD"><div class="mh"><b>Silver</b><span class="pct">+0.0%</span></div><div class="price">$—</div><canvas class="spark" width="340" height="60"></canvas></div>
+          <div class="mkt glass" data-sym="BTCUSDT"><div class="mh"><b>BTC</b><span class="pct">+0.0%</span></div><div class="price">$—</div><canvas class="spark" width="340" height="60"></canvas></div>
+          <div class="mkt glass" data-sym="ETHUSDT"><div class="mh"><b>ETH</b><span class="pct">+0.0%</span></div><div class="price">$—</div><canvas class="spark" width="340" height="60"></canvas></div>
+        </div>
+      </section>
+
+      <!-- Trades -->
+      <section id="tab-trades" class="tab">
+        <div class="card glass">
+          <div class="c-title" data-i18n="myTrades">My Trades</div>
+          <div id="tradesList" class="ops"></div>
+          <div class="row">
+            <input id="sl" class="input" placeholder="Stop-Loss"/>
+            <input id="tp" class="input" placeholder="Take-Profit"/>
+            <button id="saveSLTP" class="btn" data-i18n="save">Save</button>
           </div>
         </div>
+      </section>
 
-      </div>
-    </div>
+      <!-- Withdraw -->
+      <section id="tab-withdraw" class="tab">
+        <div class="card glass">
+          <div class="c-title" data-i18n="withdrawCrypto">Withdraw (Crypto only)</div>
+          <button id="pickMethod" class="btn">Method: <b id="methodLabel">USDT (TRC20)</b></button>
+          <div id="methodView" class="method"></div>
+          <div class="row">
+            <input id="amount" type="number" class="input" placeholder="Amount"/>
+            <button id="reqWithdraw" class="btn" data-i18n="request">Request</button>
+          </div>
+          <small class="muted" data-i18n="savedAddr">* Saved address for selected method will be used.</small>
+          <div class="card glass" style="margin-top:10px">
+            <div class="c-title" data-i18n="deposit">Deposit</div>
+            <button id="whatsapp" class="btn ghost">WhatsApp</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Requests -->
+      <section id="tab-requests" class="tab">
+        <div class="card glass">
+          <div class="c-title" data-i18n="yourRequests">Your requests</div>
+          <div id="reqList" class="ops"></div>
+        </div>
+      </section>
+
+      <!-- Support -->
+      <section id="tab-support" class="tab">
+        <div class="card glass">
+          <div class="c-title" data-i18n="supportCenter">Support Center</div>
+          <p class="muted">WhatsApp: <a href="https://wa.me/message/P6BBPSDL2CC4D1" target="_blank">Open Chat</a></p>
+          <p class="muted">Telegram: <a href="https://t.me/QL_Support" target="_blank">@QL_Support</a></p>
+        </div>
+      </section>
+    </main>
   </div>
 
-  <!-- ============================================ -->
-  <!-- WITHDRAW SHEET -->
-  <!-- ============================================ -->
-  <div id="withdrawSheet" class="bottom-sheet hidden">
-    <div class="sheet-overlay"></div>
-    <div class="sheet-content">
-      <div class="sheet-handle"></div>
-      <h3 class="sheet-title">اختر طريقة السحب</h3>
-      <div class="sheet-body">
-        <button class="method-btn" data-method="USDT-TRC20">
-          <span class="method-icon">💵</span>
-          <span class="method-name">USDT (TRC20)</span>
-        </button>
-        <button class="method-btn" data-method="BTC">
-          <span class="method-icon">₿</span>
-          <span class="method-name">Bitcoin</span>
-        </button>
-        <button class="method-btn" data-method="ETH">
-          <span class="method-icon">Ξ</span>
-          <span class="method-name">Ethereum</span>
-        </button>
-        <button class="method-btn" data-method="Bank">
-          <span class="method-icon">🏦</span>
-          <span class="method-name">تحويل بنكي</span>
-        </button>
-        <button class="method-btn" data-method="PayPal">
-          <span class="method-icon">💳</span>
-          <span class="method-name">PayPal</span>
-        </button>
-      </div>
-      <button class="btn btn-secondary btn-block sheet-cancel">إلغاء</button>
-    </div>
+  <!-- Withdraw sheet -->
+  <div id="sheet" class="sheet">
+    <div class="handle"></div>
+    <div class="s-title" data-i18n="chooseMethod">Choose withdraw method</div>
+    <button class="s-item" data-method="usdt_trc20">USDT (TRC20)</button>
+    <button class="s-item" data-method="usdt_erc20">USDT (ERC20)</button>
+    <button class="s-item" data-method="btc">Bitcoin (BTC)</button>
+    <button class="s-item" data-method="eth">Ethereum (ETH)</button>
+    <button class="s-cancel" id="sCancel" data-i18n="cancel">Cancel</button>
   </div>
 
-  <!-- Script -->
-  <script src="./app.js"></script>
+  <audio id="sndNotify" src="./notify.mp3" preload="auto"></audio>
+
+  <script type="module" src="./app.js"></script>
 </body>
 </html>

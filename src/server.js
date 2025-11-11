@@ -11,6 +11,8 @@ import { tradesRouter } from "./api/trades.js";
 import { withdrawRouter } from "./api/withdraw.js";
 import { adminRouter } from "./api/admin.js";
 import { marketsRouter } from "./api/markets.js";
+import { authRouter } from "./api/auth.js";
+import { activityRouter } from "./api/activity.js";
 import { bot } from "./bot/index.js";
 import { log } from "./utils/logger.js";
 import { pool } from "./utils/db.js";
@@ -40,6 +42,8 @@ app.use("/api/trades", secureAccess, tradesRouter);
 app.use("/api/withdraw", secureAccess, withdrawRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/markets", marketsRouter);
+app.use("/api", authRouter);
+app.use("/api", activityRouter);
 
 app.get("/healthz", async (_req, res) => {
   try {

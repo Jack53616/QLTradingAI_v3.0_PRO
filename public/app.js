@@ -1,673 +1,654 @@
-// ============================================
-// QL TRADING AI v3.0 PRO - Professional Edition
-// Binance-Level Trading Platform
-// ============================================
+// QL Trading AI v2.1 — Frontend logic
+const TWA = window.Telegram?.WebApp;
+const INVISIBLE_CHARS = /[\u0000-\u001F\u007F-\u009F\u200B-\u200F\u202A-\u202E\u2066-\u2069]/g;
+const VALID_KEY_CHARS = /^[A-Za-z0-9._\-+=]+$/;
+const KEY_FRAGMENT_RE = /[A-Za-z0-9][A-Za-z0-9._\-+=]{3,}[A-Za-z0-9=]?/g;
+const BANNED_KEY_WORDS = new Set([
+  "key", "code", "subscription", "subs", "sub", "token", "pass", "password",
+  "link", "your", "this", "that", "here", "is", "for", "the", "my",
+  "http", "https", "www", "click", "press", "bot", "created", "generated"
+]);
 
-const $ = (s) => document.querySelector(s);
-const $$ = (s) => document.querySelectorAll(s);
+const scoreToken = (token) => {
+  const lower = token.toLowerCase();
+  const length = token.length;
+  const digitCount = (token.match(/\d/g) || []).length;
+  const letterCount = (token.match(/[A-Za-z]/g) || []).length;
 
-const API_BASE = window.location.origin;
+  let score = 0;
+  if (digitCount) score += 6;
+  if (/[-_]/.test(token)) score += 2;
+  if (/[+=]/.test(token)) score += 1;
+  if (digitCount && letterCount) score += 2;
+  if (length >= 28) score += 6;
+  else if (length >= 20) score += 5;
+  else if (length >= 16) score += 4;
+  else if (length >= 12) score += 3;
+  else if (length >= 8) score += 2;
+  else if (length >= 6) score += 1;
 
-// Crypto icons mapping
-const CRYPTO_ICONS = {
-  'BTC': '₿',
-  'ETH': 'Ξ',
-  'USDT': '₮',
-  'BNB': 'B',
-  'SOL': 'S',
-  'XRP': 'X',
-  'ADA': 'A',
-  'DOGE': 'Ð',
-  'DOT': '●',
-  'MATIC': 'M'
+  const digitRatio = length ? digitCount / length : 0;
+  if (digitRatio >= 0.5) score += 4;
+  else if (digitRatio >= 0.35) score += 2;
+
+  const upperCount = (token.match(/[A-Z]/g) || []).length;
+  if (upperCount >= 4 && letterCount) score += 1;
+
+  if (length > 32) score -= Math.min(length - 32, 12);
+  if (length > 64) score -= Math.min(length - 64, 12);
+
+  if (BANNED_KEY_WORDS.has(lower)) score -= 12;
+  if (/^(key|code|token|pass)/.test(lower)) score -= 8;
+  if (lower.includes("created") || lower.includes("generated")) score -= 6;
+  if (lower.includes("http") || lower.includes("www") || lower.includes("tme")) score -= 15;
+  if (lower.includes("telegram")) score -= 8;
+  if (lower.includes("start=")) score -= 6;
+
+  return score;
 };
 
+const sanitizeToken = (candidate = "") => {
+  if (!candidate) return "";
+  let token = candidate
+    .replace(INVISIBLE_CHARS, "")
+    .trim();
+  if (!token) return "";
+  token = token.replace(/^[^A-Za-z0-9]+/, "").replace(/[^A-Za-z0-9=]+$/, "");
+  if (!token) return "";
+  if (!VALID_KEY_CHARS.test(token)) {
+    token = token.replace(/[^A-Za-z0-9._\-+=]+/g, "");
+  }
+  if (token.length < 4) return "";
+  return token;
+};
+
+const sanitizedCollapsed = (text = "") => {
+  if (!text) return "";
+  const collapsed = text.replace(/[^A-Za-z0-9._\-+=]+/g, "");
+  return collapsed.length >= 4 ? collapsed : "";
+};
+
+const extractKeyCandidates = (raw = "") => {
+  if (!raw) return [];
+  const normalized = raw.normalize("NFKC").replace(INVISIBLE_CHARS, " ").trim();
+  if (!normalized) return [];
+  const seen = new Map();
+  const candidates = [];
+  const sanitizedParts = [];
+
+  const register = (token, boost = 0) => {
+    const sanitized = sanitizeToken(token);
+    if (!sanitized) return;
+    const key = sanitized.toLowerCase();
+    if (seen.has(key)) return;
+    const score = scoreToken(sanitized) + boost;
+    seen.set(key, score);
+    candidates.push({ token: sanitized, score, idx: candidates.length });
+  };
+
+  const pushMatches = (text, boost = 0) => {
+    if (!text) return;
+    const matches = text.match(KEY_FRAGMENT_RE);
+    if (matches) matches.forEach(match => register(match, boost));
+  };
+
+  pushMatches(normalized, 1);
+
+  const startMatch = normalized.match(/start=([A-Za-z0-9._\-+=]+)/i);
+  if (startMatch) register(startMatch[1], 6);
+
+  normalized
+    .split(/[\s|,;:/\\]+/)
+    .map(part => part.trim())
+    .filter(Boolean)
+    .forEach(part => {
+      const sanitizedPart = sanitizeToken(part);
+      if (sanitizedPart) {
+        sanitizedParts.push({
+          value: sanitizedPart,
+          hasDigits: /\d/.test(sanitizedPart),
+          hasLetters: /[A-Za-z]/.test(sanitizedPart)
+        });
+      }
+      const eqIndex = part.indexOf("=");
+      if (eqIndex >= 0 && eqIndex < part.length - 1) {
+        register(part.slice(eqIndex + 1), 5);
+      }
+      register(part);
+      pushMatches(part);
+    });
+
+  for (let i = 0; i < sanitizedParts.length - 1; i++) {
+    const first = sanitizedParts[i];
+    const second = sanitizedParts[i + 1];
+    const joined = first.value + second.value;
+    if (joined.length >= 6 && (first.hasDigits || second.hasDigits)) {
+      register(joined, first.hasDigits && second.hasDigits ? 6 : 5);
+    }
+  }
+
+  for (let i = 0; i < sanitizedParts.length - 2; i++) {
+    const a = sanitizedParts[i];
+    const b = sanitizedParts[i + 1];
+    const c = sanitizedParts[i + 2];
+    const joined = a.value + b.value + c.value;
+    if (joined.length >= 8 && (a.hasDigits || b.hasDigits || c.hasDigits)) {
+      register(joined, 4);
+    }
+  }
+
+  const collapsed = sanitizedCollapsed(normalized);
+  if (collapsed) {
+    const lowerCollapsed = collapsed.toLowerCase();
+    const startsWithMeta = /^(key|code|token|pass)/.test(lowerCollapsed);
+    register(collapsed, startsWithMeta ? -2 : 1);
+  }
+
+  candidates.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    if (b.token.length !== a.token.length) return b.token.length - a.token.length;
+    return a.idx - b.idx;
+  });
+
+  return candidates.map(c => c.token);
+};
 const state = {
-  user: null,
-  markets: [],
-  trades: [],
   tg_id: null,
+  token: null,
+  user: null,
+  lang: localStorage.getItem("lang") || "en",
   feedTimer: null,
-  marketTimer: null,
-  tickerTimer: null,
-  isAppOpen: false,
-  activityItems: []
+  musicOn: false,
+  method: "usdt_trc20",
+  methodAddr: ""
 };
 
-// ============================================
-// TELEGRAM WEBAPP INITIALIZATION
-// ============================================
+document.body.classList.add("is-gated");
 
-if (window.Telegram?.WebApp) {
-  const tg = window.Telegram.WebApp;
-  tg.ready();
-  tg.expand();
-  tg.setHeaderColor('#0B0E11');
-  tg.setBackgroundColor('#0B0E11');
-  
-  const user = tg.initDataUnsafe?.user;
-  if (user?.id) {
-    state.tg_id = user.id;
-    console.log("✅ Telegram user detected:", user.id);
-  } else {
-    console.warn("⚠️ No Telegram user found");
-  }
-} else {
-  console.warn("⚠️ Not running in Telegram WebApp");
+const i18n = {
+  en: {
+    gateTitle: "QL Trading — Access",
+    gateSub: "Enter your subscription key to unlock your wallet",
+    confirm: "Confirm",
+    buyKey: "Buy a key",
+    tabWallet: "Home",
+    tabMarkets: "Markets",
+    tabTrades: "Trades",
+    tabWithdraw: "Withdraw",
+    tabRequests: "Requests",
+    tabSupport: "Support",
+    noOpenTrade: "No open trade",
+    withdraw: "Withdraw",
+    markets: "Markets",
+    support: "Support",
+    day: "Day",
+    month: "Month",
+    subLeft: "Subscription",
+    recent: "Recent activity",
+    live: "Live feed",
+    withdrawCrypto: "Withdraw (Crypto only)",
+    request: "Request",
+    savedAddr: "* Saved address for selected method will be used.",
+    deposit: "Deposit",
+    yourRequests: "Your requests",
+    supportCenter: "Support Center",
+    chooseMethod: "Choose withdraw method",
+    cancel: "Cancel",
+    myTrades: "My Trades",
+    save: "Save"
+  },
+  ar: {
+    gateTitle: "QL Trading — دخول",
+    gateSub: "أدخل مفتاح الاشتراك لفتح محفظتك",
+    confirm: "تأكيد",
+    buyKey: "شراء مفتاح",
+    tabWallet: "الرئيسية",
+    tabMarkets: "الأسواق",
+    tabTrades: "صفقاتي",
+    tabWithdraw: "السحب",
+    tabRequests: "الطلبات",
+    tabSupport: "الدعم",
+    noOpenTrade: "لا توجد صفقة مفتوحة",
+    withdraw: "سحب",
+    markets: "أسواق",
+    support: "الدعم",
+    day: "اليوم",
+    month: "الشهر",
+    subLeft: "الاشتراك",
+    recent: "النشاط الأخير",
+    live: "بث مباشر",
+    withdrawCrypto: "سحب (عملات رقمية فقط)",
+    request: "طلب",
+    savedAddr: "* سيتم استخدام العنوان المحفوظ للطريقة المحددة.",
+    deposit: "إيداع",
+    yourRequests: "طلباتك",
+    supportCenter: "مركز الدعم",
+    chooseMethod: "اختر طريقة السحب",
+    cancel: "إلغاء",
+    myTrades: "صفقاتي",
+    save: "حفظ"
+  },
+  tr: { /* اختصاراً نستخدم الإنجليزية لو ما وجدت */ },
+  de: { /* اختصاراً نستخدم الإنجليزية لو ما وجدت */ }
 }
 
-// ============================================
-// API HELPER
-// ============================================
-
-async function apiCall(path, opts = {}) {
-  try {
-    const headers = {
-      "Content-Type": "application/json",
-      ...opts.headers
-    };
-
-    if (window.Telegram?.WebApp?.initData) {
-      headers["X-Telegram-Init-Data"] = window.Telegram.WebApp.initData;
-    }
-
-    if (state.tg_id) {
-      const url = new URL(API_BASE + path);
-      url.searchParams.set('tg_id', state.tg_id);
-      path = url.pathname + url.search;
-    }
-
-    const res = await fetch(API_BASE + path, {
-      ...opts,
-      headers
-    });
-
-    const data = await res.json();
-    
-    if (!res.ok) {
-      console.error(`❌ API Error [${res.status}]:`, path, data);
-    }
-    
-    return data;
-  } catch (err) {
-    console.error("❌ API call failed:", err);
-    return { ok: false, error: err.message };
-  }
+function t(key){
+  const lang = state.lang;
+  return (i18n[lang] && i18n[lang][key]) || (i18n.en[key]||key);
 }
-
-// ============================================
-// INITIALIZATION
-// ============================================
-
-window.addEventListener("DOMContentLoaded", async () => {
-  console.log("🚀 QL Trading AI v3.0 PRO - Professional Edition");
-  
-  // Hide splash after delay
-  setTimeout(() => {
-    const splash = $("#splash");
-    if (splash) {
-      splash.style.transition = "opacity 0.6s ease";
-      splash.style.opacity = "0";
-      setTimeout(() => {
-        splash.remove();
-        console.log("✅ Splash removed");
-      }, 600);
-    }
-  }, 2500);
-
-  // Setup event listeners
-  setupEventListeners();
-
-  // Try to open app
-  setTimeout(async () => {
-    const opened = await openApp();
-    if (opened) {
-      hideGate();
-    } else {
-      showGate();
-    }
-  }, 2600);
-});
-
-// ============================================
-// EVENT LISTENERS
-// ============================================
-
-function setupEventListeners() {
-  // Gate activation
-  $("#g-activate")?.addEventListener("click", handleActivation);
-  $("#g-buy")?.addEventListener("click", () => {
-    window.open("https://wa.me/message/PGBBPSDL2CC4D1", "_blank");
+function applyI18n(){
+  document.querySelectorAll("[data-i18n]").forEach(el=>{
+    el.textContent = t(el.dataset.i18n);
   });
-
-  // Tabs
-  $$(".tab-btn").forEach(btn => {
-    btn.addEventListener("click", () => switchTab(btn.dataset.tab));
-  });
-
-  // Withdraw
-  $("#withdrawBtn")?.addEventListener("click", showWithdrawSheet);
-  $(".sheet-cancel")?.addEventListener("click", hideWithdrawSheet);
-  $(".sheet-overlay")?.addEventListener("click", hideWithdrawSheet);
-  
-  $$(".method-btn").forEach(btn => {
-    btn.addEventListener("click", () => handleWithdraw(btn.dataset.method));
-  });
+  document.body.dir = (state.lang === "ar") ? "rtl" : "ltr";
 }
 
-// ============================================
-// GATE FUNCTIONS
-// ============================================
+const $ = (q)=>document.querySelector(q);
+const $$ = (q)=>document.querySelectorAll(q);
 
-function showGate() {
-  console.log("🔒 Showing gate...");
-  
-  const gate = $("#gate");
-  const app = $("#app");
-  
-  if (gate) {
-    gate.classList.remove("hidden");
-    gate.style.display = "flex";
-  }
-  
-  if (app) {
-    app.classList.add("hidden");
-    app.style.display = "none";
-  }
-  
-  state.isAppOpen = false;
-  console.log("✅ Gate shown");
+// Splash fade then gate
+setTimeout(()=> { $("#splash")?.classList.add("hidden"); }, 1800);
+
+const cleanKeyInput = (value = "") => extractKeyCandidates(value)[0] || "";
+
+// Setup TG id
+function detectTG(){
+  try{
+    const initDataUnsafe = TWA?.initDataUnsafe;
+    const tgId = initDataUnsafe?.user?.id || null;
+    state.tg_id = tgId;
+  }catch{ state.tg_id = null; }
 }
 
-function hideGate() {
-  console.log("🔓 Hiding gate...");
-  
-  const gate = $("#gate");
-  const app = $("#app");
-  
-  if (gate) {
-    gate.style.transition = "opacity 0.3s ease";
-    gate.style.opacity = "0";
-    
-    setTimeout(() => {
-      gate.classList.add("hidden");
-      console.log("✅ Gate hidden");
-    }, 300);
-  }
-  
-  if (app) {
-    app.classList.remove("hidden");
-    app.style.opacity = "0";
-    app.style.display = "block";
-    
-    setTimeout(() => {
-      app.style.transition = "opacity 0.5s ease";
-      app.style.opacity = "1";
-      state.isAppOpen = true;
-      console.log("✅ App shown");
-    }, 200);
-  }
+// Token (optional)
+async function getToken(){
+  if(!state.tg_id) return;
+  const r = await fetch("/api/token",{method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({tg_id: state.tg_id})}).then(r=>r.json());
+  if(r.ok) state.token = r.token;
 }
 
-async function handleActivation() {
-  const name = $("#g-name")?.value?.trim();
-  const email = $("#g-email")?.value?.trim();
-  const key = $("#g-key")?.value?.trim();
+// Activate
+const gateBtn = $("#g-activate");
+gateBtn?.addEventListener("click", async ()=>{
+  if(gateBtn.disabled) return;
+  const rawKey = $("#g-key").value || "";
+  const candidates = extractKeyCandidates(rawKey);
+  const key = candidates[0] || cleanKeyInput(rawKey);
+  const name = $("#g-name").value.trim();
+  const email = $("#g-email").value.trim();
+  if(!key) return toast("Enter key");
+  const tg_id = state.tg_id || Number(prompt("Enter Telegram ID (test):","1262317603"));
+  if(!tg_id){ toast("Missing Telegram ID"); return; }
+  const initData = TWA?.initData || null;
+  const payload = { key, rawKey, candidates, tg_id, name, email, initData };
 
-  if (!key) {
-    showToast("⚠️ يرجى إدخال مفتاح الاشتراك", "error");
-    return;
-  }
+  const restore = gateBtn.textContent;
+  gateBtn.disabled = true;
+  gateBtn.textContent = "...";
 
-  const btn = $("#g-activate");
-  if (btn) {
-    btn.disabled = true;
-    btn.innerHTML = '<span class="btn-text">جاري التفعيل...</span>';
-  }
-
-  try {
-    const payload = { key };
-    if (state.tg_id) payload.tg_id = state.tg_id;
-    if (name) payload.name = name;
-    if (email) payload.email = email;
-
-    console.log("🔑 Activating with payload:", { ...payload, key: "***" });
-
-    const result = await apiCall("/api/keys/activate", {
-      method: "POST",
-      body: JSON.stringify(payload)
-    });
-
-    if (result.ok) {
-      showToast("✅ تم تفعيل الاشتراك بنجاح!", "success");
-      console.log("✅ Activation successful");
-      
-      if ($("#g-name")) $("#g-name").value = "";
-      if ($("#g-email")) $("#g-email").value = "";
-      if ($("#g-key")) $("#g-key").value = "";
-      
-      setTimeout(async () => {
-        const opened = await openApp();
-        if (opened) {
-          hideGate();
-        } else {
-          showToast("⚠️ حدث خطأ، يرجى المحاولة مرة أخرى", "error");
-        }
-      }, 1500);
-    } else {
-      const errorMsg = result.error === "invalid_key" 
-        ? "❌ مفتاح غير صحيح"
-        : result.error === "key_used"
-        ? "❌ هذا المفتاح مستخدم بالفعل"
-        : "❌ " + (result.message || "حدث خطأ");
-      
-      showToast(errorMsg, "error");
-      console.error("❌ Activation failed:", result);
-    }
-  } catch (err) {
-    showToast("❌ حدث خطأ في الاتصال", "error");
-    console.error("❌ Activation error:", err);
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.innerHTML = '<span class="btn-text">تفعيل الآن</span>';
-    }
-  }
-}
-
-function showToast(msg, type = "info") {
-  const toast = $("#g-toast");
-  if (!toast) return;
-  
-  toast.textContent = msg;
-  toast.className = `gate-toast ${type}`;
-  toast.style.opacity = "1";
-  
-  setTimeout(() => {
-    toast.style.opacity = "0";
-    setTimeout(() => {
-      toast.textContent = "";
-      toast.className = "gate-toast";
-    }, 300);
-  }, 3000);
-}
-
-// ============================================
-// APP FUNCTIONS
-// ============================================
-
-async function openApp() {
-  console.log("🔓 Opening app...");
-  
-  try {
-    const result = await apiCall("/api/users/me");
-    
-    if (result.ok && result.user) {
-      state.user = result.user;
-      console.log("✅ User loaded:", result.user);
-      
-      renderUser();
-      
-      await Promise.all([
-        loadMarkets(),
-        loadTrades()
-      ]);
-      
-      startMarketUpdates();
-      startBalanceTicker();
-      startFakeFeed();
-      
-      return true;
-    } else {
-      console.warn("⚠️ User not found or not activated");
-      return false;
-    }
-  } catch (err) {
-    console.error("❌ Error opening app:", err);
-    return false;
-  }
-}
-
-function renderUser() {
-  if (!state.user) return;
-  
-  const { balance = 0, level = "Bronze", subscription_end } = state.user;
-  const balanceNum = parseFloat(balance) || 0;
-  
-  if ($("#balance")) {
-    animateNumber($("#balance"), 0, balanceNum, 1000);
-  }
-  
-  if ($("#userLevel")) {
-    $("#userLevel").textContent = level;
-  }
-  
-  if ($("#subLeft") && subscription_end) {
-    const daysLeft = Math.ceil((new Date(subscription_end) - new Date()) / (1000 * 60 * 60 * 24));
-    $("#subLeft").textContent = daysLeft > 0 ? `${daysLeft} يوم` : "منتهي";
-  }
-}
-
-// ============================================
-// MARKETS - REAL PRICES ONLY
-// ============================================
-
-async function loadMarkets() {
-  try {
-    const result = await apiCall("/api/markets");
-    
-    if (result.ok && result.markets) {
-      state.markets = result.markets;
-      renderMarkets();
-      console.log("✅ Markets loaded:", result.markets.length);
-    }
-  } catch (err) {
-    console.error("❌ Error loading markets:", err);
-  }
-}
-
-function renderMarkets() {
-  const container = $("#marketsGrid");
-  if (!container) return;
-  
-  if (!state.markets || state.markets.length === 0) {
-    container.innerHTML = '<p class="text-muted">جاري تحميل الأسواق...</p>';
-    return;
-  }
-  
-  container.innerHTML = state.markets.map(m => {
-    const price = parseFloat(m.price) || 0;
-    const change = parseFloat(m.change) || 0;
-    const symbol = m.symbol || 'BTC';
-    const icon = CRYPTO_ICONS[symbol] || '●';
-    
-    return `
-      <div class="market-card">
-        <div class="market-icon">${icon}</div>
-        <div class="market-info">
-          <div class="market-name">${m.name || symbol}</div>
-          <div class="market-symbol">${symbol}/USDT</div>
-        </div>
-        <div class="market-price-info">
-          <div class="market-price">$${price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-          <span class="market-change ${change >= 0 ? 'up' : 'down'}">
-            ${change >= 0 ? '+' : ''}${change.toFixed(2)}%
-          </span>
-        </div>
-      </div>
-    `;
-  }).join('');
-}
-
-function startMarketUpdates() {
-  if (state.marketTimer) clearInterval(state.marketTimer);
-  
-  state.marketTimer = setInterval(async () => {
-    if (!state.isAppOpen) return;
-    await loadMarkets();
-  }, 30000); // Update every 30 seconds
-}
-
-// ============================================
-// TRADES
-// ============================================
-
-async function loadTrades() {
-  try {
-    const result = await apiCall("/api/trades/me");
-    
-    if (result.ok && result.trades) {
-      state.trades = result.trades;
-      renderTrades();
-      console.log("✅ Trades loaded:", result.trades.length);
-    }
-  } catch (err) {
-    console.error("❌ Error loading trades:", err);
-  }
-}
-
-function renderTrades() {
-  const container = $("#tradesList");
-  if (!container) return;
-  
-  if (state.trades.length === 0) {
-    container.innerHTML = '<p class="text-muted">لا توجد صفقات نشطة حالياً</p>';
-    return;
-  }
-  
-  container.innerHTML = state.trades.map(t => `
-    <div class="trade-item">
-      <div class="market-info">
-        <div class="market-name">${t.pair || 'N/A'}</div>
-        <div class="market-symbol">${t.type || 'N/A'}</div>
-      </div>
-      <div class="market-price-info">
-        <div class="market-price">$${(t.amount || 0).toFixed(2)}</div>
-        <span class="market-change ${t.profit >= 0 ? 'up' : 'down'}">
-          ${t.profit >= 0 ? '+' : ''}${(t.profit || 0).toFixed(2)}%
-        </span>
-      </div>
-    </div>
-  `).join('');
-}
-
-// ============================================
-// BALANCE TICKER
-// ============================================
-
-function startBalanceTicker() {
-  if (state.tickerTimer) clearInterval(state.tickerTimer);
-  
-  state.tickerTimer = setInterval(() => {
-    if (!state.user || !state.isAppOpen) return;
-    
-    const openTrades = state.trades.filter(t => t.status === 'open');
-    if (openTrades.length === 0) {
-      if ($("#ticker")) $("#ticker").textContent = "+0.00";
+  try{
+    const r = await fetch("/api/activate",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(payload)
+    }).then(r=>r.json());
+    if(!r?.ok){
+      toast(r?.error || "Invalid key");
       return;
     }
-    
-    const change = (Math.random() * 0.5 - 0.1).toFixed(2);
-    const newBalance = parseFloat(state.user.balance) + parseFloat(change);
-    
-    state.user.balance = newBalance;
-    
-    if ($("#balance")) {
-      $("#balance").textContent = `$${newBalance.toFixed(2)}`;
+    state.user = r.user;
+    localStorage.setItem("tg", r.user.tg_id);
+    hydrateUser(r.user);
+    unlockGate();
+    $("#g-key").value = "";
+    if(r.reused){ notify("🔓 Session restored"); }
+    const opened = await openApp(r.user);
+    if(!opened){
+      showGate();
+      toast("Unable to open wallet");
     }
-    
-    if ($("#ticker")) {
-      $("#ticker").textContent = change >= 0 ? `+${change}` : change;
-      $("#ticker").style.color = change >= 0 ? "var(--accent-green)" : "var(--accent-red)";
+  }catch(err){
+    console.error("Activation failed", err);
+    toast("Connection error");
+  }finally{
+    gateBtn.disabled = false;
+    gateBtn.textContent = restore;
+  }
+});
+function toast(msg){ const el=$("#g-toast"); el.textContent=msg; setTimeout(()=> el.textContent="", 2500); }
+
+function showGate(){
+  if(state.feedTimer){ clearInterval(state.feedTimer); state.feedTimer = null; }
+  document.body.classList.add("is-gated");
+  $("#gate")?.classList.remove("hidden");
+  $("#app")?.classList.add("hidden");
+}
+
+function unlockGate(){
+  document.body.classList.remove("is-gated");
+  $("#gate")?.classList.add("hidden");
+  $("#app")?.classList.remove("hidden");
+}
+
+// App open
+async function openApp(user = null, { auto = false } = {}){
+  if(user){
+    state.user = user;
+    hydrateUser(user);
+  }
+  if(!state.user?.tg_id){
+    if(!auto) toast("Please sign in again");
+    showGate();
+    return false;
+  }
+  if(!user){
+    try{
+      await refreshUser(true);
+    }catch(err){
+      console.warn("Failed to refresh session", err);
+      state.user = null;
+      localStorage.removeItem("tg");
+      showGate();
+      return false;
     }
-  }, 2000);
-}
-
-// ============================================
-// FAKE ACTIVITY FEED
-// ============================================
-
-const FAKE_NAMES = [
-  "أحمد محمد", "محمد علي", "خالد يوسف", "عمر حسن", "سارة أحمد",
-  "فاطمة علي", "ليلى محمود", "نور الدين", "ياسمين خالد", "زينب عمر",
-  "علي حسن", "حسن محمد", "يوسف أحمد", "كريم علي", "مريم حسن",
-  "عائشة محمد", "رنا يوسف", "دينا خالد", "هدى عمر", "سلمى أحمد",
-  "طارق محمد", "وليد علي", "سامي حسن", "رامي يوسف", "نادر خالد",
-  "لينا محمد", "ريم علي", "هبة حسن", "منى يوسف", "نهى خالد"
-];
-
-function startFakeFeed() {
-  if (state.feedTimer) clearInterval(state.feedTimer);
-  
-  // Add initial items
-  for (let i = 0; i < 5; i++) {
-    addFeedItem(generateFakeActivity());
   }
-  
-  state.feedTimer = setInterval(() => {
-    if (!state.isAppOpen) return;
-    addFeedItem(generateFakeActivity());
-  }, 20000); // Every 20 seconds
-}
-
-function generateFakeActivity() {
-  const name = FAKE_NAMES[Math.floor(Math.random() * FAKE_NAMES.length)];
-  const type = Math.random();
-  
-  let icon, text;
-  
-  if (type < 0.33) {
-    const amount = (Math.random() * 200 + 50).toFixed(0);
-    icon = "💰";
-    text = `${name} قام بسحب $${amount}`;
-  } else if (type < 0.66) {
-    const profit = (Math.random() * 150 + 20).toFixed(0);
-    icon = "📈";
-    text = `${name} حقق ربح $${profit}`;
-  } else {
-    icon = "🎉";
-    text = `${name} انضم للمنصة`;
+  unlockGate();
+  applyI18n();
+  if(user){
+    refreshUser();
   }
-  
-  return { icon, text, time: "الآن" };
+  startFeed();
+  refreshOps();
+  refreshRequests();
+  refreshMarkets();
+  return true;
 }
 
-function addFeedItem(item) {
-  const homeFeed = $("#homeFeed");
-  const fullFeed = $("#feed");
-  
-  const html = `
-    <div class="activity-item">
-      <div class="activity-icon">${item.icon}</div>
-      <div class="activity-content">
-        <div class="activity-text">${item.text}</div>
-        <div class="activity-time">${item.time}</div>
-      </div>
-    </div>
+// Tabs
+$$(".seg-btn").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    $$(".seg-btn").forEach(b=>b.classList.remove("active"));
+    btn.classList.add("active");
+    const tab = btn.dataset.tab;
+    $$(".tab").forEach(s=>s.classList.remove("show"));
+    $(`#tab-${tab}`)?.classList.add("show");
+  });
+});
+
+$("#goWithdraw").onclick = ()=>{ document.querySelector('[data-tab="withdraw"]').click(); }
+$("#goMarkets").onclick  = ()=>{ document.querySelector('[data-tab="markets"]').click(); }
+$("#goSupport").onclick  = ()=>{ document.querySelector('[data-tab="support"]').click(); }
+
+// Language
+$("#btnLang").addEventListener("click", ()=>{
+  const order = ["en","ar","tr","de"];
+  const idx = order.indexOf(state.lang);
+  state.lang = order[(idx+1)%order.length];
+  localStorage.setItem("lang", state.lang);
+  applyI18n();
+});
+
+// Music
+const snd = $("#sndNotify");
+let bgAudio = null;
+$("#btnMusic").addEventListener("click", ()=>{
+  if(!state.musicOn){
+    if(!bgAudio){
+      bgAudio = new Audio();
+      bgAudio.src = "notify.mp3"; // مبدئياً نفس الملف (خفيف)
+      bgAudio.loop = true;
+      bgAudio.volume = 0.15;
+    }
+    state.musicOn = true; bgAudio.play().catch(()=>{});
+  }else{
+    state.musicOn = false; bgAudio.pause();
+  }
+});
+
+// Withdraw sheet
+const sheet = $("#sheet");
+$("#pickMethod").addEventListener("click", ()=> sheet.classList.add("show"));
+$("#sCancel").addEventListener("click", ()=> sheet.classList.remove("show"));
+$$(".s-item").forEach(b=>{
+  b.addEventListener("click", ()=>{
+    state.method = b.dataset.method;
+    $("#methodLabel").textContent = b.textContent;
+    renderMethod();
+    sheet.classList.remove("show");
+  });
+});
+
+function renderMethod(){
+  const map = {
+    usdt_trc20: "USDT (TRC20)",
+    usdt_erc20: "USDT (ERC20)",
+    btc: "Bitcoin",
+    eth: "Ethereum"
+  };
+  $("#methodLabel").textContent = map[state.method] || "USDT (TRC20)";
+  $("#methodView").innerHTML = `
+    <div class="muted">Saved address:</div>
+    <input id="addr" class="input" placeholder="Your ${map[state.method]||'Wallet'} address..."/>
+    <button id="saveAddr" class="btn">Save</button>
   `;
-  
-  // Add to home feed (max 5 items)
-  if (homeFeed) {
-    homeFeed.insertAdjacentHTML('afterbegin', html);
-    const items = homeFeed.querySelectorAll('.activity-item');
-    if (items.length > 5) {
-      items[items.length - 1].remove();
-    }
-  }
-  
-  // Add to full feed
-  if (fullFeed) {
-    fullFeed.insertAdjacentHTML('afterbegin', html);
-    const items = fullFeed.querySelectorAll('.activity-item');
-    if (items.length > 50) {
-      items[items.length - 1].remove();
-    }
-  }
-}
-
-// ============================================
-// TABS
-// ============================================
-
-function switchTab(tabName) {
-  // Update tab buttons
-  $$(".tab-btn").forEach(btn => {
-    if (btn.dataset.tab === tabName) {
-      btn.classList.add("active");
-    } else {
-      btn.classList.remove("active");
-    }
-  });
-  
-  // Update tab content
-  $$(".tab-content").forEach(content => {
-    if (content.id === tabName) {
-      content.classList.add("show");
-    } else {
-      content.classList.remove("show");
-    }
-  });
-}
-
-// ============================================
-// WITHDRAW
-// ============================================
-
-function showWithdrawSheet() {
-  const sheet = $("#withdrawSheet");
-  if (sheet) {
-    sheet.classList.remove("hidden");
-    sheet.style.display = "flex";
-  }
-}
-
-function hideWithdrawSheet() {
-  const sheet = $("#withdrawSheet");
-  if (sheet) {
-    sheet.classList.add("hidden");
-    setTimeout(() => {
-      sheet.style.display = "none";
-    }, 300);
-  }
-}
-
-async function handleWithdraw(method) {
-  console.log("💰 Withdraw requested:", method);
-  
-  if (!state.user) {
-    alert("⚠️ يرجى تسجيل الدخول أولاً");
-    return;
-  }
-  
-  const amount = prompt(`كم تريد أن تسحب؟ (الرصيد المتاح: $${state.user.balance})`);
-  if (!amount || isNaN(amount) || amount <= 0) {
-    alert("⚠️ المبلغ غير صحيح");
-    return;
-  }
-  
-  const address = prompt(`أدخل عنوان ${method}:`);
-  if (!address || address.trim() === "") {
-    alert("⚠️ العنوان غير صحيح");
-    return;
-  }
-  
-  try {
-    const result = await apiCall("/api/withdraw", {
-      method: "POST",
-      body: JSON.stringify({
-        method,
-        amount: parseFloat(amount),
-        address: address.trim()
-      })
+  $("#saveAddr").onclick = async ()=>{
+    const address = $("#addr").value.trim();
+    const tg = state.user?.tg_id || Number(localStorage.getItem("tg"));
+    await fetch("/api/withdraw/method",{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({tg_id:tg, method:state.method, address})
     });
-    
-    if (result.ok) {
-      alert("✅ تم إرسال طلب السحب بنجاح!");
-      hideWithdrawSheet();
-    } else {
-      alert("❌ " + (result.message || "حدث خطأ"));
-    }
-  } catch (err) {
-    alert("❌ حدث خطأ في الاتصال");
-    console.error("❌ Withdraw error:", err);
+    notify("✅ Address saved");
+  }
+}
+renderMethod();
+
+$("#reqWithdraw").addEventListener("click", async ()=>{
+  const tg = state.user?.tg_id || Number(localStorage.getItem("tg"));
+  const amount = Number($("#amount").value || 0);
+  if(amount<=0) return notify("Enter amount");
+  const r = await fetch("/api/withdraw",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({tg_id:tg, amount, method: state.method})
+  }).then(r=>r.json());
+  if(!r.ok) return notify("❌ "+(r.error||"Error"));
+  notify("✅ Request sent");
+  refreshUser(); refreshRequests();
+});
+
+// WhatsApp deposit
+$("#whatsapp").onclick = ()=> window.open("https://wa.me/message/P6BBPSDL2CC4D1","_blank");
+
+// Data
+function hydrateUser(user){
+  if(!user) return;
+  $("#balance").textContent = "$" + Number(user.balance || 0).toFixed(2);
+  $("#subLeft").textContent = user.sub_expires ? new Date(user.sub_expires).toLocaleDateString() : "—";
+}
+
+async function refreshUser(required = false){
+  const tg = state.user?.tg_id || Number(localStorage.getItem("tg"));
+  if(!tg){
+    if(required) throw new Error("missing_tg");
+    return false;
+  }
+  let payload = null;
+  try{
+    payload = await fetch(`/api/user/${tg}`).then(r=>r.json());
+  }catch(err){
+    if(required) throw err;
+    return false;
+  }
+  if(payload?.ok){
+    state.user = payload.user;
+    hydrateUser(payload.user);
+    return true;
+  }
+  if(required) throw new Error(payload?.error || "user_not_found");
+  return false;
+}
+
+async function refreshOps(){
+  const tg = state.user?.tg_id || Number(localStorage.getItem("tg"));
+  if(!tg) return;
+  const r = await fetch(`/api/ops/${tg}`).then(r=>r.json());
+  const box = $("#ops"); box.innerHTML = "";
+  if(r.ok){
+    r.list.forEach(o=>{
+      const div = document.createElement("div");
+      div.className="op";
+      div.innerHTML = `<span>${o.type||'op'}</span><b>${Number(o.amount).toFixed(2)}</b>`;
+      box.appendChild(div);
+    });
   }
 }
 
-// ============================================
-// UTILITIES
-// ============================================
-
-function animateNumber(element, start, end, duration) {
-  const range = end - start;
-  const increment = range / (duration / 16);
-  let current = start;
-  
-  const timer = setInterval(() => {
-    current += increment;
-    if ((increment > 0 && current >= end) || (increment < 0 && current <= end)) {
-      current = end;
-      clearInterval(timer);
-    }
-    element.textContent = `$${current.toFixed(2)}`;
-  }, 16);
+async function refreshRequests(){
+  const tg = state.user?.tg_id || Number(localStorage.getItem("tg"));
+  if(!tg) return;
+  const r = await fetch(`/api/requests/${tg}`).then(r=>r.json());
+  const box = $("#reqList"); box.innerHTML = "";
+  if(r.ok){
+    r.list.forEach(req=>{
+      const div = document.createElement("div");
+      div.className="op";
+      div.innerHTML = `<span>#${req.id} — ${req.method} — ${req.status}</span><b>$${Number(req.amount).toFixed(2)}</b>`;
+      if(req.status==="pending"){
+        const b = document.createElement("button");
+        b.className="btn"; b.style.marginLeft="8px"; b.textContent="Cancel";
+        b.onclick = async ()=>{
+          const tg = state.user?.tg_id || Number(localStorage.getItem("tg"));
+          await fetch("/api/withdraw/cancel",{method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({tg_id:tg, id:req.id})});
+          refreshRequests(); refreshUser();
+        };
+        div.appendChild(b);
+      }
+      box.appendChild(div);
+    });
+  }
 }
+
+// Markets
+async function refreshMarkets(){
+  try{
+    const r = await fetch("/api/markets").then(r=>r.json());
+    if(!r.ok) return;
+    $$(".mkt").forEach(card=>{
+      const sym = card.dataset.sym;
+      const price = r.data?.[sym] || 0;
+      card.querySelector(".price").textContent = "$"+Number(price).toFixed(2);
+      // spark fake
+      const c = card.querySelector("canvas");
+      const ctx = c.getContext("2d");
+      ctx.clearRect(0,0,c.width,c.height);
+      ctx.beginPath();
+      let y = 40 + Math.random()*8;
+      ctx.moveTo(0,y);
+      for(let x=0; x<c.width; x+=8){
+        y += (Math.random()-0.5)*4;
+        ctx.lineTo(x,y);
+      }
+      ctx.lineWidth = 2; ctx.strokeStyle = "#7fe0ff";
+      ctx.stroke();
+      // pct
+      const pct = ((Math.random()-.5)*2).toFixed(2);
+      card.querySelector(".pct").textContent = (pct>0?"+":"") + pct + "%";
+      card.querySelector(".pct").style.color = (pct>=0) ? "#9df09d" : "#ff8899";
+    });
+  }catch{}
+}
+
+// Live feed (وهمي كل 20 ثانية)
+const names = ["أحمد","محمد","خالد","سارة","رامي","نور","ليلى","وسيم","حسن","طارق"];
+function startFeed(){
+  if(state.feedTimer) clearInterval(state.feedTimer);
+  const feed = $("#feed");
+  const push = (txt)=>{
+    const it = document.createElement("div");
+    it.className="item"; it.textContent = txt;
+    feed.prepend(it);
+    $("#sndNotify")?.play().catch(()=>{});
+    while(feed.childElementCount>12) feed.lastChild.remove();
+  };
+  const once = ()=>{
+    const r = Math.random();
+    const name = names[Math.floor(Math.random()*names.length)];
+    if(r<0.34){
+      const v = 50+Math.floor(Math.random()*200);
+      push(`🪙 ${name} سحب ${v}$ بنجاح`);
+    }else if(r<0.67){
+      const v = 20+Math.floor(Math.random()*120);
+      const m = ["Gold","BTC","ETH","Silver"][Math.floor(Math.random()*4)];
+      push(`💰 ${name} ربح ${v}$ من صفقة ${m}`);
+    }else{
+      const v = 150+Math.floor(Math.random()*400);
+      push(`🎉 مستخدم جديد انضم وأودع ${v}$`);
+    }
+  };
+  once();
+  state.feedTimer = setInterval(once, 20000);
+}
+
+// Fake balance ticker (يتحرك إذا في صفقة يومية)
+let tickerI = 0;
+setInterval(async ()=>{
+  if(!state.user) return;
+  // اسحب daily_targets النشطة؟ (للتبسيط: حرك واجهة فقط)
+  // الحركة البصرية:
+  const dir = Math.random()>.5?1:-1;
+  const step = (Math.random()*0.8)*dir;
+  const cur = Number(String($("#balance").textContent).replace(/[^\d.]/g,""))||0;
+  const next = Math.max(0, cur + step);
+  $("#balance").textContent = "$"+next.toFixed(2);
+  const change = (dir>0?"+":"") + step.toFixed(2);
+  $("#ticker").textContent = change;
+  $("#ticker").style.color = (dir>0) ? "#9df09d" : "#ff8899";
+  // خط الرسم
+  const p = $("#chartPath");
+  tickerI = (tickerI+1)%100;
+  const y = 12 + Math.sin(tickerI/8)*3 + (dir>0?-1:1);
+  p.setAttribute("d", `M0,18 C15,12 22,16 30,15 C40,14 52,10 60,12 C70,14 82,${y} 100,12`);
+}, 2000);
+
+// Trades (عرض بسيط)
+async function loadTrades(){
+  const tg = state.user?.tg_id || Number(localStorage.getItem("tg"));
+  // ما في endpoint لائحة، نعرض من ops كتمثيل مبسط:
+  const box = $("#tradesList"); box.innerHTML = "";
+  const div = document.createElement("div");
+  div.className="op";
+  div.innerHTML = `<span>Open trade: XAUUSD</span><b>running...</b>`;
+  box.appendChild(div);
+}
+$("#saveSLTP").onclick = ()=>{
+  notify("✅ SL/TP saved");
+};
+
+// Helpers
+function notify(msg){
+  const el = document.createElement("div");
+  el.className="feed item";
+  el.textContent = msg;
+  $("#feed").prepend(el);
+  $("#sndNotify")?.play().catch(()=>{});
+  setTimeout(()=>{ el.remove();}, 6000);
+}
+
+// Boot
+(async function(){
+  detectTG();
+  await getToken();
+  applyI18n();
+
+  // إذا عنده TG محفوظ، جرّب تفتح مباشرة
+  const old = localStorage.getItem("tg");
+  if(old){
+    state.user = { tg_id: Number(old) };
+    const opened = await openApp(null, { auto: true });
+    if(!opened) showGate();
+  }else{
+    showGate();
+  }
+})();
