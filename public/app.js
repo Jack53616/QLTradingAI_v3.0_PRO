@@ -155,7 +155,7 @@ function notify(msg) {
   el.className = "feed item";
   el.textContent = msg;
   $("#feed")?.prepend(el);
-  $("#sndNotify")?.play().catch(() => {});
+  // Sound removed
   setTimeout(() => { el.remove(); }, 6000);
 }
 
@@ -481,7 +481,7 @@ function startFeed() {
     it.className = "item";
     it.textContent = txt;
     feed.prepend(it);
-    $("#sndNotify")?.play().catch(() => {});
+    // Sound removed
     while (feed.childElementCount > 12) feed.lastChild.remove();
   };
   
