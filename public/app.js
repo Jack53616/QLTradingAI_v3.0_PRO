@@ -174,6 +174,34 @@ function showError(message) {
   setTimeout(() => div.remove(), 3000);
 }
 
+// 🎛️ UI visibility helpers
+function showElement(el) {
+  if (!el || el.classList.contains("is-visible")) return;
+  el.classList.remove("hidden");
+  requestAnimationFrame(() => el.classList.add("is-visible"));
+}
+
+function hideElement(el) {
+  if (!el || el.classList.contains("hidden")) return;
+  el.classList.remove("is-visible");
+  setTimeout(() => el.classList.add("hidden"), 450);
+}
+
+// ⏳ Loader dismiss
+function dismissLoader() {
+  const loader = document.getElementById("loader");
+  if (!loader || loader.classList.contains("hidden")) return;
+  loader.classList.add("fade-out");
+  loader.addEventListener(
+    "animationend",
+    () => {
+      loader.classList.add("hidden");
+      loader.classList.remove("fade-out");
+    },
+    { once: true }
+  );
+}
+
 // 🚀 Boot
 async function bootstrap() {
   await setLanguage(state.lang);
