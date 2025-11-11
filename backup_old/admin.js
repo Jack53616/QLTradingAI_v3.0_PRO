@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QL Trading AI — Admin Panel</title>
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+  <div class="admin-container">
+    <h1>QL Trading AI — Admin Panel</h1>
+
+    <div id="loginBox" class="card">
+      <h2>Admin Login</h2>
+      <input type="password" id="adminToken" placeholder="Enter Admin Token" />
+      <button id="loginBtn">Login</button>
+    </div>
+
+    <div id="dashboard" class="hidden">
+      <div id="loadingIndicator" class="loader hidden"></div>
+      <div class="card">
+        <div class="header-row">
+          <h2>All Users</h2>
+          <button id="refreshUsers">🔄 Refresh</button>
+        </div>
+        <table id="usersTable">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Name</th>
+              <th>Level</th>
+              <th>Balance</th>
+              <th>Expires</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script src="admin.js"></script>
+</body>
+</html>

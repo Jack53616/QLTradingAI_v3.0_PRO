@@ -1,0 +1,61 @@
+{
+  "subscription": {
+    "title": "🔑 Abonnement-Schlüssel eingeben",
+    "subtitle": "Aktiviere das Premium-Dashboard mit deinem Schlüssel.",
+    "activate": "Aktivieren",
+    "placeholder": "Aktivierungsschlüssel eingeben",
+    "buy": "Schlüssel kaufen 💬"
+  },
+  "tabs": {
+    "markets": "Märkte",
+    "trades": "Trades",
+    "withdraw": "Auszahlung",
+    "feed": "Live-Feed"
+  },
+  "wallet": {
+    "balance": "Gesamtsaldo",
+    "user": "Benutzer",
+    "expires": "Abo läuft ab",
+    "subtitle": "Bleib kapitalisiert und nutze automatisierte Trades.",
+    "unknown": "Gast",
+    "noSubscription": "Kein aktives Abonnement"
+  },
+  "markets": {
+    "title": "Live-Märkte",
+    "updated": "Soeben aktualisiert",
+    "empty": "Marktdaten sind vorübergehend nicht verfügbar"
+  },
+  "trades": {
+    "title": "Neueste Trades",
+    "empty": "Noch keine Trades. Aktiviere dein Abo, um zu starten."
+  },
+  "withdraw": {
+    "title": "Auszahlungsanfrage",
+    "method": "Methode",
+    "address": "Adresse / IBAN",
+    "amount": "Betrag",
+    "submit": "Anfrage senden",
+    "addressPlaceholder": "Wallet-Adresse oder IBAN eingeben",
+    "amountPlaceholder": "Gewünschter Betrag",
+    "methods": {
+      "usdt": "USDT (TRC20)",
+      "btc": "Bitcoin",
+      "bank": "Banküberweisung"
+    }
+  },
+  "feed": {
+    "title": "Community-Aktivität"
+  },
+  "errors": {
+    "keyRequired": "Bitte zuerst deinen Aktivierungsschlüssel eingeben.",
+    "invalidKey": "Dieser Schlüssel ist ungültig oder bereits verwendet.",
+    "server": "Serverfehler. Bitte erneut versuchen.",
+    "withdrawFailed": "Auszahlungsanfrage fehlgeschlagen."
+  },
+  "messages": {
+    "activating": "Wird aktiviert...",
+    "activated": "✅ Schlüssel erfolgreich aktiviert!",
+    "sending": "Anfrage wird gesendet...",
+    "withdrawSuccess": "✅ Auszahlungsanfrage gesendet."
+  }
+}

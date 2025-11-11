@@ -1,0 +1,61 @@
+{
+  "subscription": {
+    "title": "🔑 Abonelik Anahtarını Gir",
+    "subtitle": "Aktivasyon anahtarın ile premium panele eriş.",
+    "activate": "Aktifleştir",
+    "placeholder": "Aktivasyon anahtarını gir",
+    "buy": "Anahtar satın al 💬"
+  },
+  "tabs": {
+    "markets": "Piyasalar",
+    "trades": "İşlemler",
+    "withdraw": "Çekim",
+    "feed": "Canlı Akış"
+  },
+  "wallet": {
+    "balance": "Toplam Bakiye",
+    "user": "Kullanıcı",
+    "expires": "Abonelik bitişi",
+    "subtitle": "Fonunu koru ve otomatik işlemlerin tadını çıkar.",
+    "unknown": "Ziyaretçi",
+    "noSubscription": "Aktif abonelik yok"
+  },
+  "markets": {
+    "title": "Canlı Piyasalar",
+    "updated": "Az önce güncellendi",
+    "empty": "Piyasa verileri geçici olarak kullanılamıyor"
+  },
+  "trades": {
+    "title": "Son İşlemler",
+    "empty": "Henüz işlem yok. Başlamak için aboneliğini aktifleştir."
+  },
+  "withdraw": {
+    "title": "Çekim Talebi",
+    "method": "Yöntem",
+    "address": "Adres / IBAN",
+    "amount": "Tutar",
+    "submit": "Talep Gönder",
+    "addressPlaceholder": "Cüzdan adresi veya IBAN gir",
+    "amountPlaceholder": "Talep edilen tutar",
+    "methods": {
+      "usdt": "USDT (TRC20)",
+      "btc": "Bitcoin",
+      "bank": "Banka Transferi"
+    }
+  },
+  "feed": {
+    "title": "Topluluk Aktivitesi"
+  },
+  "errors": {
+    "keyRequired": "Lütfen önce aktivasyon anahtarını gir.",
+    "invalidKey": "Anahtar geçersiz veya zaten kullanılmış.",
+    "server": "Sunucu hatası. Lütfen tekrar dene.",
+    "withdrawFailed": "Çekim talebi başarısız oldu."
+  },
+  "messages": {
+    "activating": "Aktifleştiriliyor...",
+    "activated": "✅ Anahtar başarıyla aktifleştirildi!",
+    "sending": "Talep gönderiliyor...",
+    "withdrawSuccess": "✅ Çekim talebi gönderildi."
+  }
+}
