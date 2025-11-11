@@ -37,7 +37,17 @@ async function handleCommand(message) {
   if (text === "/start") {
     return sendMessage(
       chatId,
-      "🤖 *QL Trading AI Bot Ready!*\n\nWelcome to QL Trading AI. Use /help to explore available commands.",
+      `👋 *Welcome to QL Trading AI*
+🤖 The smart trading bot that works automatically for you.
+💰 Just deposit funds and watch profits added to your wallet.
+📊 Track balance, trades, and withdrawals inside your wallet.
+🕒 24/7 support via WhatsApp or Telegram.
+
+👋 *أهلاً بك في QL Trading AI*
+🤖 البوت الذكي الذي يعمل تلقائياً لإدارة تداولاتك.
+💰 كل ما عليك هو الإيداع وانتظر الأرباح تُضاف تلقائياً.
+📊 تابع رصيدك، صفقاتك، وطلبات السحب من داخل المحفظة.
+🕒 دعم 24/7 عبر واتساب أو تيليجرام.`,
       { parse_mode: "Markdown" }
     );
   }

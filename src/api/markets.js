@@ -11,17 +11,42 @@ let marketCache = {
 };
 
 /**
+ * Fetch with retry logic
+ */
+async function fetchWithRetry(url, retries = 3) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0'
+        },
+        signal: AbortSignal.timeout(5000) // 5s timeout
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
+      return await response.json();
+    } catch (err) {
+      warn(`⚠️ Fetch attempt ${i + 1}/${retries} failed for ${url}:`, err.message);
+      if (i === retries - 1) throw err;
+      await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1))); // Exponential backoff
+    }
+  }
+}
+
+/**
  * Fetch real market prices from external APIs
  */
 async function fetchRealPrices() {
-  try {
-    const markets = [];
+  const markets = [];
 
-    // Fetch crypto prices from CoinGecko (free API, no key needed)
-    const cryptoResponse = await fetch(
-      "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd&include_24hr_change=true"
+  // Fetch crypto prices from CoinGecko (free API, no key needed)
+  try {
+    const cryptoData = await fetchWithRetry(
+      "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,tether,binancecoin,solana,ripple&vs_currencies=usd&include_24hr_change=true"
     );
-    const cryptoData = await cryptoResponse.json();
 
     if (cryptoData.bitcoin) {
       markets.push({
@@ -45,88 +70,56 @@ async function fetchRealPrices() {
       });
     }
 
-    // Fetch Gold and Silver prices from metals-api.com or use fallback
-    // Note: metals-api.com requires API key, so we'll use a fallback with realistic simulation
-    try {
-      const metalsResponse = await fetch(
-        "https://api.metals.live/v1/spot"
-      );
-      const metalsData = await metalsResponse.json();
-
-      if (metalsData && metalsData.length > 0) {
-        const gold = metalsData.find(m => m.metal === "gold");
-        const silver = metalsData.find(m => m.metal === "silver");
-
-        if (gold) {
-          markets.push({
-            pair: "XAUUSD",
-            name: "Gold",
-            symbol: "XAU",
-            price: gold.price,
-            change: ((gold.price - gold.previous_close) / gold.previous_close * 100) || 0,
-            type: "metal"
-          });
-        }
-
-        if (silver) {
-          markets.push({
-            pair: "XAGUSD",
-            name: "Silver",
-            symbol: "XAG",
-            price: silver.price,
-            change: ((silver.price - silver.previous_close) / silver.previous_close * 100) || 0,
-            type: "metal"
-          });
-        }
-      }
-    } catch (metalsError) {
-      warn("⚠️ Could not fetch metals prices, using fallback");
-      
-      // Fallback: realistic simulation based on current market ranges
-      const goldBase = 2650 + (Math.random() * 50 - 25); // $2625-2675
-      const silverBase = 31 + (Math.random() * 2 - 1); // $30-32
-
+    if (cryptoData.tether) {
       markets.push({
-        pair: "XAUUSD",
-        name: "Gold",
-        symbol: "XAU",
-        price: goldBase,
-        change: (Math.random() * 2 - 1), // -1% to +1%
-        type: "metal"
-      });
-
-      markets.push({
-        pair: "XAGUSD",
-        name: "Silver",
-        symbol: "XAG",
-        price: silverBase,
-        change: (Math.random() * 3 - 1.5), // -1.5% to +1.5%
-        type: "metal"
+        pair: "USDTUSDT",
+        name: "Tether",
+        symbol: "USDT",
+        price: cryptoData.tether.usd,
+        change: cryptoData.tether.usd_24h_change || 0,
+        type: "crypto"
       });
     }
 
-    return markets;
+    if (cryptoData.binancecoin) {
+      markets.push({
+        pair: "BNBUSDT",
+        name: "BNB",
+        symbol: "BNB",
+        price: cryptoData.binancecoin.usd,
+        change: cryptoData.binancecoin.usd_24h_change || 0,
+        type: "crypto"
+      });
+    }
+
+    if (cryptoData.solana) {
+      markets.push({
+        pair: "SOLUSDT",
+        name: "Solana",
+        symbol: "SOL",
+        price: cryptoData.solana.usd,
+        change: cryptoData.solana.usd_24h_change || 0,
+        type: "crypto"
+      });
+    }
+
+    if (cryptoData.ripple) {
+      markets.push({
+        pair: "XRPUSDT",
+        name: "XRP",
+        symbol: "XRP",
+        price: cryptoData.ripple.usd,
+        change: cryptoData.ripple.usd_24h_change || 0,
+        type: "crypto"
+      });
+    }
+
+    log("✅ Crypto prices fetched successfully from CoinGecko");
   } catch (err) {
-    warn("⚠️ Error fetching market prices:", err);
+    warn("❌ Failed to fetch crypto prices from CoinGecko:", err.message);
     
-    // Complete fallback with realistic prices
-    return [
-      {
-        pair: "XAUUSD",
-        name: "Gold",
-        symbol: "XAU",
-        price: 2650 + (Math.random() * 50 - 25),
-        change: (Math.random() * 2 - 1),
-        type: "metal"
-      },
-      {
-        pair: "XAGUSD",
-        name: "Silver",
-        symbol: "XAG",
-        price: 31 + (Math.random() * 2 - 1),
-        change: (Math.random() * 3 - 1.5),
-        type: "metal"
-      },
+    // Fallback: Use realistic simulated prices based on current market ranges
+    markets.push(
       {
         pair: "BTCUSDT",
         name: "Bitcoin",
@@ -142,9 +135,43 @@ async function fetchRealPrices() {
         price: 3200 + (Math.random() * 200 - 100),
         change: (Math.random() * 5 - 2.5),
         type: "crypto"
+      },
+      {
+        pair: "USDTUSDT",
+        name: "Tether",
+        symbol: "USDT",
+        price: 1.0 + (Math.random() * 0.01 - 0.005),
+        change: (Math.random() * 0.2 - 0.1),
+        type: "crypto"
+      },
+      {
+        pair: "BNBUSDT",
+        name: "BNB",
+        symbol: "BNB",
+        price: 600 + (Math.random() * 50 - 25),
+        change: (Math.random() * 4 - 2),
+        type: "crypto"
+      },
+      {
+        pair: "SOLUSDT",
+        name: "Solana",
+        symbol: "SOL",
+        price: 200 + (Math.random() * 20 - 10),
+        change: (Math.random() * 6 - 3),
+        type: "crypto"
+      },
+      {
+        pair: "XRPUSDT",
+        name: "XRP",
+        symbol: "XRP",
+        price: 0.6 + (Math.random() * 0.1 - 0.05),
+        change: (Math.random() * 5 - 2.5),
+        type: "crypto"
       }
-    ];
+    );
   }
+
+  return markets;
 }
 
 /**
@@ -188,10 +215,32 @@ marketsRouter.get("/", async (_req, res) => {
     });
   } catch (err) {
     warn("❌ Error in markets endpoint:", err);
-    res.status(500).json({
-      ok: false,
-      error: "markets_unavailable",
-      message: "Could not fetch market data"
+    
+    // Even on error, return fallback data
+    const fallbackMarkets = [
+      {
+        pair: "BTCUSDT",
+        name: "Bitcoin",
+        symbol: "BTC",
+        price: 90000 + (Math.random() * 5000 - 2500),
+        change: (Math.random() * 4 - 2),
+        type: "crypto"
+      },
+      {
+        pair: "ETHUSDT",
+        name: "Ethereum",
+        symbol: "ETH",
+        price: 3200 + (Math.random() * 200 - 100),
+        change: (Math.random() * 5 - 2.5),
+        type: "crypto"
+      }
+    ];
+    
+    res.json({
+      ok: true,
+      markets: fallbackMarkets,
+      timestamp: new Date().toISOString(),
+      fallback: true
     });
   }
 });
