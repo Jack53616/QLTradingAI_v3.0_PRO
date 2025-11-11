@@ -366,17 +366,27 @@ function renderMarkets() {
   const container = $("#marketsGrid");
   if (!container) return;
   
-  container.innerHTML = state.markets.map(m => `
-    <div class="market-card card-glass">
-      <div class="market-header">
-        <span class="market-name">${m.symbol}</span>
-        <span class="market-change ${m.change >= 0 ? 'up' : 'down'}">
-          ${m.change >= 0 ? '+' : ''}${m.change.toFixed(2)}%
-        </span>
+  if (!state.markets || state.markets.length === 0) {
+    container.innerHTML = '<p class="text-muted">لا توجد أسواق متاحة</p>';
+    return;
+  }
+  
+  container.innerHTML = state.markets.map(m => {
+    const price = parseFloat(m.price) || 0;
+    const change = parseFloat(m.change) || 0;
+    
+    return `
+      <div class="market-card card-glass">
+        <div class="market-header">
+          <span class="market-name">${m.symbol || 'Unknown'}</span>
+          <span class="market-change ${change >= 0 ? 'up' : 'down'}">
+            ${change >= 0 ? '+' : ''}${change.toFixed(2)}%
+          </span>
+        </div>
+        <div class="market-price">$${price.toFixed(2)}</div>
       </div>
-      <div class="market-price">$${m.price.toFixed(2)}</div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 // ============================================
