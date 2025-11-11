@@ -29,8 +29,8 @@ authRouter.post("/activate", async (req, res) => {
 
     // Check if key exists and is valid
     const keyResult = await pool.query(
-      "SELECT * FROM subscription_keys WHERE key_hash = $1",
-      [keyHash]
+      "SELECT * FROM keys WHERE key_code = $1",
+      [key]
     );
 
     if (!keyResult.rows.length) {
@@ -39,17 +39,13 @@ authRouter.post("/activate", async (req, res) => {
 
     const keyData = keyResult.rows[0];
 
-    if (keyData.used) {
+    if (keyData.used_by) {
       return res.json({ ok: false, error: "key_already_used" });
-    }
-
-    if (keyData.expires_at && new Date(keyData.expires_at) < new Date()) {
-      return res.json({ ok: false, error: "key_expired" });
     }
 
     // Check if user already exists
     let userResult = await pool.query(
-      "SELECT * FROM users WHERE tg_id = $1",
+      "SELECT * FROM users WHERE id = $1",
       [tg_id]
     );
 
@@ -63,17 +59,17 @@ authRouter.post("/activate", async (req, res) => {
              email = COALESCE($3, email),
              level = $4,
              sub_expires = NOW() + ($5 || ' days')::interval
-         WHERE tg_id = $1
-         RETURNING id, tg_id, name, email, level, balance, sub_expires`,
+         WHERE id = $1
+         RETURNING id, name, email, level, balance, sub_expires`,
         [tg_id, name, email, keyData.level, keyData.duration_days]
       );
       user = updateResult.rows[0];
     } else {
       // Create new user
       const insertResult = await pool.query(
-        `INSERT INTO users (tg_id, name, email, level, balance, sub_expires, created_at)
+        `INSERT INTO users (id, name, email, level, balance, sub_expires, created_at)
          VALUES ($1, $2, $3, $4, 0, NOW() + ($5 || ' days')::interval, NOW())
-         RETURNING id, tg_id, name, email, level, balance, sub_expires`,
+         RETURNING id, name, email, level, balance, sub_expires`,
         [tg_id, name || "User", email, keyData.level, keyData.duration_days]
       );
       user = insertResult.rows[0];
@@ -81,8 +77,8 @@ authRouter.post("/activate", async (req, res) => {
 
     // Mark key as used
     await pool.query(
-      "UPDATE subscription_keys SET used = true, used_by = $1, used_at = NOW() WHERE key_hash = $2",
-      [tg_id, keyHash]
+      "UPDATE keys SET used_by = $1, used_at = NOW() WHERE key_code = $2",
+      [user.id, key]
     );
 
     res.json({ ok: true, user });
