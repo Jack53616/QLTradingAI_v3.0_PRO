@@ -16,12 +16,11 @@ if (telegram) {
 }
 
 const telegramUser = telegram?.initDataUnsafe?.user || null;
-if (!state.initData) {
-  const fallbackInit = localStorage.getItem("ql_initdata");
-  if (fallbackInit) state.initData = fallbackInit;
-}
-if (state.initData) {
-  localStorage.setItem("ql_initdata", state.initData);
+
+// Security: Don't store initData in localStorage
+// Only use it from Telegram WebApp directly
+if (!state.initData && process.env.NODE_ENV === "development") {
+  console.warn("⚠️ Development mode: No Telegram initData available");
 }
 
 // 🧠 ترجمة النصوص
@@ -99,9 +98,13 @@ function updateProfile() {
   subscriptionEl.textContent = translate("wallet.subtitle");
   if (state.user.sub_expires) {
     const expires = new Date(state.user.sub_expires);
+    const now = new Date();
+    const isActive = expires > now;
     expiresEl.textContent = expires.toLocaleDateString();
+    expiresEl.style.color = isActive ? "#4ade80" : "#ef4444";
   } else {
     expiresEl.textContent = translate("wallet.noSubscription");
+    expiresEl.style.color = "#ef4444";
   }
 }
 
@@ -113,7 +116,7 @@ async function apiFetch(url, options = {}) {
     (window.location.hostname.includes("localhost") ||
     window.location.hostname.includes("127.0.0.1")
       ? "http://localhost:10000"
-      : "https://qltrading-render.onrender.com");
+      : window.location.origin);
 
   const headers = {
     Accept: "application/json",
@@ -121,8 +124,11 @@ async function apiFetch(url, options = {}) {
     ...(options.headers || {}),
   };
 
-  if (state.initData) headers["x-telegram-initdata"] = state.initData;
-  else console.warn("⚠️ Telegram initData غير موجود — سيتم الإرسال بدونها.");
+  if (state.initData) {
+    headers["x-telegram-initdata"] = state.initData;
+  } else {
+    console.warn("⚠️ Telegram initData not available");
+  }
 
   const fullUrl = url.startsWith("http") ? url : `${base}${url}`;
 
@@ -130,8 +136,6 @@ async function apiFetch(url, options = {}) {
     url: fullUrl,
     method: options.method || "GET",
     hasInitData: !!state.initData,
-    headers,
-    body: options.body || null,
   });
 
   try {
@@ -142,10 +146,20 @@ async function apiFetch(url, options = {}) {
     });
 
     if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
       console.error(
         `❌ API Error (${res.status}): ${res.statusText}`,
-        await res.text()
+        errorData
       );
+      
+      // Show user-friendly error messages
+      if (res.status === 401) {
+        showError(translate("errors.unauthorized") || "Authentication required");
+      } else if (res.status === 429) {
+        showError(translate("errors.rate_limit") || "Too many requests. Please wait.");
+      } else if (errorData.message) {
+        showError(errorData.message);
+      }
     } else {
       console.log(`✅ API Response ${res.status}: ${fullUrl}`);
     }
@@ -153,8 +167,34 @@ async function apiFetch(url, options = {}) {
     return res;
   } catch (err) {
     console.error("🚨 Network or Fetch Error:", err);
+    showError(translate("errors.network") || "Network error. Please check your connection.");
     throw err;
   }
+}
+
+// Show error notification
+function showError(message) {
+  // Simple error notification (you can enhance this)
+  const errorDiv = document.createElement("div");
+  errorDiv.className = "error-notification";
+  errorDiv.textContent = message;
+  errorDiv.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: #ef4444;
+    color: white;
+    padding: 16px 24px;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    z-index: 9999;
+    animation: slideIn 0.3s ease;
+  `;
+  document.body.appendChild(errorDiv);
+  setTimeout(() => {
+    errorDiv.style.animation = "slideOut 0.3s ease";
+    setTimeout(() => errorDiv.remove(), 300);
+  }, 3000);
 }
 
 // 🧱 واجهة العرض
@@ -200,12 +240,18 @@ function renderMarkets() {
   state.markets.forEach((m) => {
     const card = document.createElement("div");
     card.className = "card";
+    const changeClass = Number(m.change24h) >= 0 ? "profit" : "loss";
     card.innerHTML = `
       <div>
         <div class="title">${m.pair}</div>
         <div class="subtitle">${translate("markets.updated")}</div>
       </div>
-      <strong>$${Number(m.price || 0).toFixed(2)}</strong>
+      <div style="text-align: right;">
+        <strong>$${Number(m.price || 0).toFixed(2)}</strong>
+        <div class="${changeClass}" style="font-size: 0.875rem;">
+          ${Number(m.change24h) >= 0 ? "+" : ""}${Number(m.change24h).toFixed(2)}%
+        </div>
+      </div>
     `;
     marketList.appendChild(card);
   });
@@ -252,14 +298,14 @@ async function loadDashboard(silent = false) {
       }
     }
 
-    if (marketsRes) {
-      const data = marketsRes.ok ? await safeJson(marketsRes) : {};
+    if (marketsRes?.ok) {
+      const data = await safeJson(marketsRes);
       state.markets = data?.markets || [];
       renderMarkets();
     }
 
-    if (tradesRes) {
-      const data = tradesRes.ok ? await safeJson(tradesRes) : {};
+    if (tradesRes?.ok) {
+      const data = await safeJson(tradesRes);
       state.trades = data?.trades || [];
       renderTrades();
     }
@@ -304,5 +350,109 @@ async function bootstrap() {
   }
 }
 
-// 🚀 ابدأ التشغيل بعد تحميل الصفحة
-document.addEventListener("DOMContentLoaded", bootstrap);
+// Event listeners
+document.addEventListener("DOMContentLoaded", () => {
+  bootstrap();
+
+  // Language switcher
+  document.getElementById("langBtn")?.addEventListener("click", () => {
+    const nextLang = supportedLangs[(supportedLangs.indexOf(state.lang) + 1) % supportedLangs.length];
+    setLanguage(nextLang);
+  });
+
+  // Refresh button
+  document.getElementById("refreshBtn")?.addEventListener("click", () => {
+    loadDashboard();
+  });
+
+  // Tab switching
+  document.querySelectorAll(".tabs button").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const tabName = btn.dataset.tab;
+      document.querySelectorAll(".tabs button").forEach((b) => b.classList.remove("active"));
+      document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById(tabName)?.classList.add("active");
+    });
+  });
+
+  // Key activation
+  document.getElementById("activateKey")?.addEventListener("click", async () => {
+    const keyInput = document.getElementById("keyInput");
+    const statusEl = document.getElementById("activationStatus");
+    const key = keyInput.value.trim();
+
+    if (!key) {
+      statusEl.textContent = translate("subscription.enterKey") || "Please enter a key";
+      statusEl.style.color = "#ef4444";
+      return;
+    }
+
+    statusEl.textContent = translate("subscription.activating") || "Activating...";
+    statusEl.style.color = "#3b82f6";
+
+    try {
+      const res = await apiFetch("/api/keys/activate", {
+        method: "POST",
+        body: JSON.stringify({
+          key,
+          tg_id: telegramUser?.id,
+          name: telegramUser?.first_name,
+          username: telegramUser?.username,
+        }),
+      });
+
+      const data = await safeJson(res);
+
+      if (res.ok && data.ok) {
+        statusEl.textContent = translate("subscription.success") || "Activated successfully!";
+        statusEl.style.color = "#10b981";
+        setTimeout(() => {
+          window.location.reload();
+        }, 1500);
+      } else {
+        statusEl.textContent = data.message || translate("subscription.failed") || "Activation failed";
+        statusEl.style.color = "#ef4444";
+      }
+    } catch (err) {
+      statusEl.textContent = translate("subscription.error") || "Error activating key";
+      statusEl.style.color = "#ef4444";
+    }
+  });
+
+  // Withdrawal form
+  document.getElementById("withdrawForm")?.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const statusEl = document.getElementById("withdrawStatus");
+    const method = document.getElementById("withdrawMethod").value;
+    const address = document.getElementById("withdrawAddress").value.trim();
+    const amount = document.getElementById("withdrawAmount").value;
+
+    statusEl.textContent = translate("withdraw.processing") || "Processing...";
+    statusEl.style.color = "#3b82f6";
+
+    try {
+      const res = await apiFetch("/api/withdraw", {
+        method: "POST",
+        body: JSON.stringify({ method, address, amount: Number(amount) }),
+      });
+
+      const data = await safeJson(res);
+
+      if (res.ok && data.ok) {
+        statusEl.textContent = translate("withdraw.success") || "Request submitted successfully!";
+        statusEl.style.color = "#10b981";
+        e.target.reset();
+        setTimeout(() => {
+          statusEl.textContent = "";
+        }, 3000);
+      } else {
+        statusEl.textContent = data.message || translate("withdraw.failed") || "Request failed";
+        statusEl.style.color = "#ef4444";
+      }
+    } catch (err) {
+      statusEl.textContent = translate("withdraw.error") || "Error submitting request";
+      statusEl.style.color = "#ef4444";
+    }
+  });
+});
