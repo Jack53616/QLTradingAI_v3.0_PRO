@@ -1,6 +1,6 @@
 // ============================================
-// QL TRADING AI v3.0 PRO - Professional Edition
-// Binance-Level Trading Platform
+// QL Trading AI v3.0 PRO - Frontend
+// Professional Edition with Advanced UI/UX
 // ============================================
 
 const $ = (s) => document.querySelector(s);
@@ -8,30 +8,15 @@ const $$ = (s) => document.querySelectorAll(s);
 
 const API_BASE = window.location.origin;
 
-// Crypto icons mapping
-const CRYPTO_ICONS = {
-  'BTC': '₿',
-  'ETH': 'Ξ',
-  'USDT': '₮',
-  'BNB': 'B',
-  'SOL': 'S',
-  'XRP': 'X',
-  'ADA': 'A',
-  'DOGE': 'Ð',
-  'DOT': '●',
-  'MATIC': 'M'
-};
-
 const state = {
   user: null,
   markets: [],
   trades: [],
   tg_id: null,
+  lang: "ar",
   feedTimer: null,
-  marketTimer: null,
   tickerTimer: null,
-  isAppOpen: false,
-  activityItems: []
+  isAppOpen: false
 };
 
 // ============================================
@@ -42,8 +27,8 @@ if (window.Telegram?.WebApp) {
   const tg = window.Telegram.WebApp;
   tg.ready();
   tg.expand();
-  tg.setHeaderColor('#0B0E11');
-  tg.setBackgroundColor('#0B0E11');
+  tg.setHeaderColor('#0a0814');
+  tg.setBackgroundColor('#0a0814');
   
   const user = tg.initDataUnsafe?.user;
   if (user?.id) {
@@ -67,10 +52,12 @@ async function apiCall(path, opts = {}) {
       ...opts.headers
     };
 
+    // Add Telegram WebApp init data for authentication
     if (window.Telegram?.WebApp?.initData) {
       headers["X-Telegram-Init-Data"] = window.Telegram.WebApp.initData;
     }
 
+    // Always add tg_id to query if available (fallback authentication)
     if (state.tg_id) {
       const url = new URL(API_BASE + path);
       url.searchParams.set('tg_id', state.tg_id);
@@ -100,7 +87,7 @@ async function apiCall(path, opts = {}) {
 // ============================================
 
 window.addEventListener("DOMContentLoaded", async () => {
-  console.log("🚀 QL Trading AI v3.0 PRO - Professional Edition");
+  console.log("🚀 QL Trading AI v3.0 PRO Initialized");
   
   // Hide splash after delay
   setTimeout(() => {
@@ -122,8 +109,10 @@ window.addEventListener("DOMContentLoaded", async () => {
   setTimeout(async () => {
     const opened = await openApp();
     if (opened) {
+      // User is authenticated, show the app
       hideGate();
     } else {
+      // User not found, show gate (activation screen)
       showGate();
     }
   }, 2600);
@@ -153,6 +142,9 @@ function setupEventListeners() {
   $$(".method-btn").forEach(btn => {
     btn.addEventListener("click", () => handleWithdraw(btn.dataset.method));
   });
+
+  // Language toggle
+  $("#langBtn")?.addEventListener("click", toggleLanguage);
 }
 
 // ============================================
@@ -191,11 +183,14 @@ function hideGate() {
     
     setTimeout(() => {
       gate.classList.add("hidden");
+      gate.style.display = "none";
+      gate.style.opacity = "1";
       console.log("✅ Gate hidden");
     }, 300);
   }
   
   if (app) {
+    // Remove hidden class first to override display:none !important
     app.classList.remove("hidden");
     app.style.opacity = "0";
     app.style.display = "block";
@@ -242,10 +237,12 @@ async function handleActivation() {
       showToast("✅ تم تفعيل الاشتراك بنجاح!", "success");
       console.log("✅ Activation successful");
       
+      // Clear inputs
       if ($("#g-name")) $("#g-name").value = "";
       if ($("#g-email")) $("#g-email").value = "";
       if ($("#g-key")) $("#g-key").value = "";
       
+      // Wait a bit then open app
       setTimeout(async () => {
         const opened = await openApp();
         if (opened) {
@@ -270,7 +267,7 @@ async function handleActivation() {
   } finally {
     if (btn) {
       btn.disabled = false;
-      btn.innerHTML = '<span class="btn-text">تفعيل الآن</span>';
+      btn.innerHTML = '<span class="btn-text">تفعيل الآن</span><span class="btn-shine"></span>';
     }
   }
 }
@@ -300,20 +297,23 @@ async function openApp() {
   console.log("🔓 Opening app...");
   
   try {
+    // Try to load user
     const result = await apiCall("/api/users/me");
     
     if (result.ok && result.user) {
       state.user = result.user;
       console.log("✅ User loaded:", result.user);
       
+      // Render UI
       renderUser();
       
+      // Load data
       await Promise.all([
         loadMarkets(),
         loadTrades()
       ]);
       
-      startMarketUpdates();
+      // Start timers
       startBalanceTicker();
       startFakeFeed();
       
@@ -332,16 +332,21 @@ function renderUser() {
   if (!state.user) return;
   
   const { balance = 0, level = "Bronze", subscription_end } = state.user;
+  
+  // Convert balance to number (it comes as string from DB)
   const balanceNum = parseFloat(balance) || 0;
   
+  // Balance
   if ($("#balance")) {
-    animateNumber($("#balance"), 0, balanceNum, 1000);
+    $("#balance").textContent = `$${balanceNum.toFixed(2)}`;
   }
   
+  // Level
   if ($("#userLevel")) {
     $("#userLevel").textContent = level;
   }
   
+  // Subscription
   if ($("#subLeft") && subscription_end) {
     const daysLeft = Math.ceil((new Date(subscription_end) - new Date()) / (1000 * 60 * 60 * 24));
     $("#subLeft").textContent = daysLeft > 0 ? `${daysLeft} يوم` : "منتهي";
@@ -349,7 +354,7 @@ function renderUser() {
 }
 
 // ============================================
-// MARKETS - REAL PRICES ONLY
+// MARKETS
 // ============================================
 
 async function loadMarkets() {
@@ -371,41 +376,26 @@ function renderMarkets() {
   if (!container) return;
   
   if (!state.markets || state.markets.length === 0) {
-    container.innerHTML = '<p class="text-muted">جاري تحميل الأسواق...</p>';
+    container.innerHTML = '<p class="text-muted">لا توجد أسواق متاحة</p>';
     return;
   }
   
   container.innerHTML = state.markets.map(m => {
     const price = parseFloat(m.price) || 0;
     const change = parseFloat(m.change) || 0;
-    const symbol = m.symbol || 'BTC';
-    const icon = CRYPTO_ICONS[symbol] || '●';
     
     return `
-      <div class="market-card">
-        <div class="market-icon">${icon}</div>
-        <div class="market-info">
-          <div class="market-name">${m.name || symbol}</div>
-          <div class="market-symbol">${symbol}/USDT</div>
-        </div>
-        <div class="market-price-info">
-          <div class="market-price">$${price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+      <div class="market-card card-glass">
+        <div class="market-header">
+          <span class="market-name">${m.symbol || 'Unknown'}</span>
           <span class="market-change ${change >= 0 ? 'up' : 'down'}">
             ${change >= 0 ? '+' : ''}${change.toFixed(2)}%
           </span>
         </div>
+        <div class="market-price">$${price.toFixed(2)}</div>
       </div>
     `;
   }).join('');
-}
-
-function startMarketUpdates() {
-  if (state.marketTimer) clearInterval(state.marketTimer);
-  
-  state.marketTimer = setInterval(async () => {
-    if (!state.isAppOpen) return;
-    await loadMarkets();
-  }, 30000); // Update every 30 seconds
 }
 
 // ============================================
@@ -431,22 +421,15 @@ function renderTrades() {
   if (!container) return;
   
   if (state.trades.length === 0) {
-    container.innerHTML = '<p class="text-muted">لا توجد صفقات نشطة حالياً</p>';
+    container.innerHTML = '<p class="text-muted">لا توجد صفقات حالياً</p>';
     return;
   }
   
   container.innerHTML = state.trades.map(t => `
     <div class="trade-item">
-      <div class="market-info">
-        <div class="market-name">${t.pair || 'N/A'}</div>
-        <div class="market-symbol">${t.type || 'N/A'}</div>
-      </div>
-      <div class="market-price-info">
-        <div class="market-price">$${(t.amount || 0).toFixed(2)}</div>
-        <span class="market-change ${t.profit >= 0 ? 'up' : 'down'}">
-          ${t.profit >= 0 ? '+' : ''}${(t.profit || 0).toFixed(2)}%
-        </span>
-      </div>
+      <strong>${t.pair || 'N/A'}</strong> - 
+      ${t.type || 'N/A'} - 
+      $${(t.amount || 0).toFixed(2)}
     </div>
   `).join('');
 }
@@ -461,12 +444,14 @@ function startBalanceTicker() {
   state.tickerTimer = setInterval(() => {
     if (!state.user || !state.isAppOpen) return;
     
+    // Only tick if there are open trades
     const openTrades = state.trades.filter(t => t.status === 'open');
     if (openTrades.length === 0) {
       if ($("#ticker")) $("#ticker").textContent = "+0.00";
       return;
     }
     
+    // Random small change
     const change = (Math.random() * 0.5 - 0.1).toFixed(2);
     const newBalance = parseFloat(state.user.balance) + parseFloat(change);
     
@@ -478,7 +463,7 @@ function startBalanceTicker() {
     
     if ($("#ticker")) {
       $("#ticker").textContent = change >= 0 ? `+${change}` : change;
-      $("#ticker").style.color = change >= 0 ? "var(--accent-green)" : "var(--accent-red)";
+      $("#ticker").style.color = change >= 0 ? "var(--success)" : "var(--danger)";
     }
   }, 2000);
 }
@@ -499,69 +484,49 @@ const FAKE_NAMES = [
 function startFakeFeed() {
   if (state.feedTimer) clearInterval(state.feedTimer);
   
-  // Add initial items
-  for (let i = 0; i < 5; i++) {
-    addFeedItem(generateFakeActivity());
-  }
-  
   state.feedTimer = setInterval(() => {
     if (!state.isAppOpen) return;
-    addFeedItem(generateFakeActivity());
-  }, 20000); // Every 20 seconds
+    
+    const name = FAKE_NAMES[Math.floor(Math.random() * FAKE_NAMES.length)];
+    const type = Math.random();
+    
+    let msg;
+    if (type < 0.33) {
+      const amount = (Math.random() * 200 + 50).toFixed(0);
+      msg = `💰 ${name} قام بسحب $${amount}`;
+    } else if (type < 0.66) {
+      const profit = (Math.random() * 150 + 20).toFixed(0);
+      msg = `📈 ${name} حقق ربح $${profit}`;
+    } else {
+      msg = `🎉 ${name} انضم للمنصة`;
+    }
+    
+    addFeedItem(msg);
+  }, 15000);
 }
 
-function generateFakeActivity() {
-  const name = FAKE_NAMES[Math.floor(Math.random() * FAKE_NAMES.length)];
-  const type = Math.random();
+function addFeedItem(msg) {
+  const container = $("#feed");
+  if (!container) return;
   
-  let icon, text;
+  const item = document.createElement("div");
+  item.className = "activity-item";
+  item.textContent = msg;
+  item.style.opacity = "0";
+  item.style.transform = "translateY(-10px)";
   
-  if (type < 0.33) {
-    const amount = (Math.random() * 200 + 50).toFixed(0);
-    icon = "💰";
-    text = `${name} قام بسحب $${amount}`;
-  } else if (type < 0.66) {
-    const profit = (Math.random() * 150 + 20).toFixed(0);
-    icon = "📈";
-    text = `${name} حقق ربح $${profit}`;
-  } else {
-    icon = "🎉";
-    text = `${name} انضم للمنصة`;
-  }
+  container.insertBefore(item, container.firstChild);
   
-  return { icon, text, time: "الآن" };
-}
-
-function addFeedItem(item) {
-  const homeFeed = $("#homeFeed");
-  const fullFeed = $("#feed");
+  setTimeout(() => {
+    item.style.transition = "all 0.3s ease";
+    item.style.opacity = "1";
+    item.style.transform = "translateY(0)";
+  }, 10);
   
-  const html = `
-    <div class="activity-item">
-      <div class="activity-icon">${item.icon}</div>
-      <div class="activity-content">
-        <div class="activity-text">${item.text}</div>
-        <div class="activity-time">${item.time}</div>
-      </div>
-    </div>
-  `;
-  
-  // Add to home feed (max 5 items)
-  if (homeFeed) {
-    homeFeed.insertAdjacentHTML('afterbegin', html);
-    const items = homeFeed.querySelectorAll('.activity-item');
-    if (items.length > 5) {
-      items[items.length - 1].remove();
-    }
-  }
-  
-  // Add to full feed
-  if (fullFeed) {
-    fullFeed.insertAdjacentHTML('afterbegin', html);
-    const items = fullFeed.querySelectorAll('.activity-item');
-    if (items.length > 50) {
-      items[items.length - 1].remove();
-    }
+  // Remove old items
+  const items = container.querySelectorAll(".activity-item");
+  if (items.length > 10) {
+    items[items.length - 1].remove();
   }
 }
 
@@ -570,23 +535,17 @@ function addFeedItem(item) {
 // ============================================
 
 function switchTab(tabName) {
-  // Update tab buttons
+  // Update buttons
   $$(".tab-btn").forEach(btn => {
-    if (btn.dataset.tab === tabName) {
-      btn.classList.add("active");
-    } else {
-      btn.classList.remove("active");
-    }
+    btn.classList.toggle("active", btn.dataset.tab === tabName);
   });
   
-  // Update tab content
+  // Update content
   $$(".tab-content").forEach(content => {
-    if (content.id === tabName) {
-      content.classList.add("show");
-    } else {
-      content.classList.remove("show");
-    }
+    content.classList.toggle("show", content.id === tabName);
   });
+  
+  console.log("📑 Switched to tab:", tabName);
 }
 
 // ============================================
@@ -597,7 +556,6 @@ function showWithdrawSheet() {
   const sheet = $("#withdrawSheet");
   if (sheet) {
     sheet.classList.remove("hidden");
-    sheet.style.display = "flex";
   }
 }
 
@@ -605,69 +563,60 @@ function hideWithdrawSheet() {
   const sheet = $("#withdrawSheet");
   if (sheet) {
     sheet.classList.add("hidden");
-    setTimeout(() => {
-      sheet.style.display = "none";
-    }, 300);
   }
 }
 
 async function handleWithdraw(method) {
-  console.log("💰 Withdraw requested:", method);
+  hideWithdrawSheet();
   
-  if (!state.user) {
-    alert("⚠️ يرجى تسجيل الدخول أولاً");
-    return;
-  }
+  if (!state.user) return;
   
-  const amount = prompt(`كم تريد أن تسحب؟ (الرصيد المتاح: $${state.user.balance})`);
-  if (!amount || isNaN(amount) || amount <= 0) {
-    alert("⚠️ المبلغ غير صحيح");
-    return;
-  }
+  const balanceNum = parseFloat(state.user.balance) || 0;
+  const amount = prompt(`كم تريد سحب؟ (الرصيد: $${balanceNum.toFixed(2)})`);
+  if (!amount || isNaN(amount) || amount <= 0) return;
   
   const address = prompt(`أدخل عنوان ${method}:`);
-  if (!address || address.trim() === "") {
-    alert("⚠️ العنوان غير صحيح");
-    return;
-  }
+  if (!address) return;
   
   try {
-    const result = await apiCall("/api/withdraw", {
+    const result = await apiCall("/api/withdraw/request", {
       method: "POST",
       body: JSON.stringify({
-        method,
         amount: parseFloat(amount),
-        address: address.trim()
+        method,
+        address
       })
     });
     
     if (result.ok) {
-      alert("✅ تم إرسال طلب السحب بنجاح!");
-      hideWithdrawSheet();
+      alert("✅ تم إرسال طلب السحب بنجاح! سيتم المراجعة قريباً.");
     } else {
       alert("❌ " + (result.message || "حدث خطأ"));
     }
   } catch (err) {
     alert("❌ حدث خطأ في الاتصال");
-    console.error("❌ Withdraw error:", err);
+    console.error(err);
   }
 }
 
 // ============================================
-// UTILITIES
+// LANGUAGE TOGGLE
 // ============================================
 
-function animateNumber(element, start, end, duration) {
-  const range = end - start;
-  const increment = range / (duration / 16);
-  let current = start;
-  
-  const timer = setInterval(() => {
-    current += increment;
-    if ((increment > 0 && current >= end) || (increment < 0 && current <= end)) {
-      current = end;
-      clearInterval(timer);
-    }
-    element.textContent = `$${current.toFixed(2)}`;
-  }, 16);
+function toggleLanguage() {
+  state.lang = state.lang === "ar" ? "en" : "ar";
+  document.documentElement.setAttribute("lang", state.lang);
+  document.documentElement.setAttribute("dir", state.lang === "ar" ? "rtl" : "ltr");
+  console.log("🌐 Language changed to:", state.lang);
 }
+
+// ============================================
+// CLEANUP
+// ============================================
+
+window.addEventListener("beforeunload", () => {
+  if (state.feedTimer) clearInterval(state.feedTimer);
+  if (state.tickerTimer) clearInterval(state.tickerTimer);
+});
+
+console.log("✅ QL Trading AI v3.0 PRO - Ready!");
