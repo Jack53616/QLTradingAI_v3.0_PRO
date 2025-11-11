@@ -28,16 +28,12 @@ services:
       - key: DATABASE_SSL
         value: true
 
-  # PostgreSQL Database
-  - type: pserv
-    name: ql-trading-db
-    env: docker
+databases:
+  - name: ql-trading-db
+    databaseName: qltrading
+    user: qltrading_user
     plan: free
     region: frankfurt
-    disk:
-      name: ql-trading-data
-      mountPath: /var/lib/postgresql/data
-      sizeGB: 1
 
 # Note: After deployment, you need to:
 # 1. Set BOT_TOKEN in Render dashboard

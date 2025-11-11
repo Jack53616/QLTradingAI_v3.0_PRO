@@ -2,7 +2,14 @@ import jwt from "jsonwebtoken";
 import { config } from "../config/env.js";
 import { log } from "./logger.js";
 
-const JWT_SECRET = config.JWT_SECRET || "change-this-secret-in-production";
+// Validate JWT_SECRET exists
+if (!config.JWT_SECRET || config.JWT_SECRET.length < 32) {
+  throw new Error(
+    "JWT_SECRET environment variable is required and must be at least 32 characters long"
+  );
+}
+
+const JWT_SECRET = config.JWT_SECRET;
 const JWT_EXPIRES_IN = "24h";
 
 /**

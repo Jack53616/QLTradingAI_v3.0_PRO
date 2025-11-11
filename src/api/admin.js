@@ -2,10 +2,12 @@ import express from "express";
 import { verifyAdminJWT, signAdmin } from "../utils/jwt.js";
 import { pool } from "../utils/db.js";
 import { log } from "../utils/logger.js";
+import { strictRateLimiter } from "../middleware/rateLimiter.js";
 
 export const adminRouter = express.Router();
 
-adminRouter.post("/login", (req, res) => {
+// Apply strict rate limiting to login endpoint
+adminRouter.post("/login", strictRateLimiter(), (req, res) => {
   const { token } = req.body || {};
   if (!token || token !== process.env.ADMIN_TOKEN) {
     return res.status(401).json({ ok: false, error: "invalid_admin_token" });

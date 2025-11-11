@@ -239,27 +239,18 @@ async function handleApproveWithdraw(chatId, text) {
 
     const { user_id, amount } = requestRows[0];
 
-    // Deduct balance and approve request
-    await pool.query("BEGIN");
-    
+    // Balance already deducted when request was created
+    // Just update status and add timestamp
     await pool.query(
-      "UPDATE users SET balance = balance - $1 WHERE id = $2",
-      [amount, user_id]
-    );
-
-    await pool.query(
-      "UPDATE requests SET status = 'approved' WHERE id = $1",
+      "UPDATE requests SET status = 'approved', processed_at = NOW() WHERE id = $1",
       [requestId]
     );
-
-    await pool.query("COMMIT");
 
     log("✅ Withdrawal approved", { requestId, userId: user_id, amount });
 
     await sendMessage(user_id, `✅ تم قبول طلب السحب الخاص بك بمبلغ $${amount}`);
-    return sendMessage(chatId, `✅ Withdrawal #${requestId} approved. $${amount} deducted from user ${user_id}.`);
+    return sendMessage(chatId, `✅ Withdrawal #${requestId} approved. Balance was already reserved.`);
   } catch (err) {
-    await pool.query("ROLLBACK");
     error("❌ Error approving withdrawal:", err);
     return sendMessage(chatId, "❌ Failed to approve withdrawal.");
   }
@@ -274,20 +265,41 @@ async function handleRejectWithdraw(chatId, text) {
   }
 
   try {
-    const { rows } = await pool.query(
-      "UPDATE requests SET status = 'rejected' WHERE id = $1 AND status = 'pending' RETURNING user_id",
+    await pool.query("BEGIN");
+
+    // Get request details
+    const { rows: requestRows } = await pool.query(
+      "SELECT user_id, amount FROM requests WHERE id = $1 AND status = 'pending'",
       [requestId]
     );
 
-    if (!rows.length) {
+    if (!requestRows.length) {
+      await pool.query("ROLLBACK");
       return sendMessage(chatId, "⚠️ Request not found or already processed.");
     }
 
-    log("🚫 Withdrawal rejected", { requestId });
+    const { user_id, amount } = requestRows[0];
 
-    await sendMessage(rows[0].user_id, "❌ تم رفض طلب السحب الخاص بك.");
-    return sendMessage(chatId, `🚫 Withdrawal #${requestId} rejected.`);
+    // Return reserved balance to user
+    await pool.query(
+      "UPDATE users SET balance = balance + $1 WHERE id = $2",
+      [amount, user_id]
+    );
+
+    // Update request status
+    await pool.query(
+      "UPDATE requests SET status = 'rejected', processed_at = NOW() WHERE id = $1",
+      [requestId]
+    );
+
+    await pool.query("COMMIT");
+
+    log("🚫 Withdrawal rejected and balance returned", { requestId, userId: user_id, amount });
+
+    await sendMessage(user_id, `❌ تم رفض طلب السحب الخاص بك. تم إرجاع $${amount} إلى رصيدك.`);
+    return sendMessage(chatId, `🚫 Withdrawal #${requestId} rejected. $${amount} returned to user.`);
   } catch (err) {
+    await pool.query("ROLLBACK");
     error("❌ Error rejecting withdrawal:", err);
     return sendMessage(chatId, "❌ Failed to reject withdrawal.");
   }

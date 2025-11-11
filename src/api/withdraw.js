@@ -7,7 +7,7 @@ export const withdrawRouter = express.Router();
 
 /**
  * POST /api/withdraw
- * Create a withdrawal request
+ * Create a withdrawal request and reserve balance immediately
  */
 withdrawRouter.post("/", async (req, res) => {
   const userId = req.telegram?.id;
@@ -50,14 +50,37 @@ withdrawRouter.post("/", async (req, res) => {
     });
   }
 
+  // Maximum withdrawal amount
+  const MAX_WITHDRAWAL = 10000;
+  if (withdrawAmount > MAX_WITHDRAWAL) {
+    return res.status(400).json({
+      ok: false,
+      error: "amount_too_high",
+      message: `Maximum withdrawal amount is $${MAX_WITHDRAWAL}`
+    });
+  }
+
+  // Validate address format for crypto methods
+  if (method === 'USDT-TRC20' && (!address || address.length !== 34)) {
+    return res.status(400).json({
+      ok: false,
+      error: "invalid_address",
+      message: "USDT-TRC20 address must be 34 characters"
+    });
+  }
+
   try {
-    // Check user balance
+    // Start transaction
+    await pool.query('BEGIN');
+
+    // Check user subscription
     const { rows: userRows } = await pool.query(
-      "SELECT balance, sub_expires FROM users WHERE id = $1",
+      "SELECT balance, sub_expires FROM users WHERE id = $1 FOR UPDATE",
       [userId]
     );
 
     if (!userRows.length) {
+      await pool.query('ROLLBACK');
       return res.status(404).json({
         ok: false,
         error: "user_not_found",
@@ -70,6 +93,7 @@ withdrawRouter.post("/", async (req, res) => {
 
     // Check if user has active subscription
     if (!user.sub_expires || new Date(user.sub_expires) < new Date()) {
+      await pool.query('ROLLBACK');
       return res.status(403).json({
         ok: false,
         error: "subscription_expired",
@@ -77,8 +101,33 @@ withdrawRouter.post("/", async (req, res) => {
       });
     }
 
-    // Check if balance is sufficient
-    if (currentBalance < withdrawAmount) {
+    // Check pending requests limit
+    const { rows: pendingRows } = await pool.query(
+      "SELECT COUNT(*) as count FROM requests WHERE user_id = $1 AND status = 'pending'",
+      [userId]
+    );
+
+    const MAX_PENDING = 3;
+    if (Number(pendingRows[0].count) >= MAX_PENDING) {
+      await pool.query('ROLLBACK');
+      return res.status(400).json({
+        ok: false,
+        error: "too_many_pending",
+        message: `You have ${MAX_PENDING} pending requests. Please wait for approval.`
+      });
+    }
+
+    // Reserve balance immediately - this prevents double withdrawal
+    const { rows: updateRows } = await pool.query(
+      `UPDATE users 
+       SET balance = balance - $1 
+       WHERE id = $2 AND balance >= $1
+       RETURNING balance`,
+      [withdrawAmount, userId]
+    );
+
+    if (!updateRows.length) {
+      await pool.query('ROLLBACK');
       warn("⚠️ Insufficient balance for withdrawal", {
         userId,
         balance: currentBalance,
@@ -101,11 +150,15 @@ withdrawRouter.post("/", async (req, res) => {
       [userId, method, address || null, withdrawAmount]
     );
 
-    log("💰 Withdrawal request created", {
+    // Commit transaction
+    await pool.query('COMMIT');
+
+    log("💰 Withdrawal request created and balance reserved", {
       requestId: rows[0].id,
       userId,
       amount: withdrawAmount,
-      method
+      method,
+      newBalance: updateRows[0].balance
     });
 
     res.json({ 
@@ -117,10 +170,12 @@ withdrawRouter.post("/", async (req, res) => {
         method,
         status: "pending",
         created_at: rows[0].created_at
-      }
+      },
+      new_balance: Number(updateRows[0].balance)
     });
 
   } catch (err) {
+    await pool.query('ROLLBACK');
     error("❌ Withdrawal request error:", err);
     res.status(500).json({ 
       ok: false, 
@@ -143,7 +198,7 @@ withdrawRouter.get("/history", async (req, res) => {
 
   try {
     const { rows } = await pool.query(
-      `SELECT id, method, address, amount, status, created_at
+      `SELECT id, method, address, amount, status, created_at, processed_at
        FROM requests
        WHERE user_id = $1
        ORDER BY created_at DESC

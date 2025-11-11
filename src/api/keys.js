@@ -33,6 +33,16 @@ keysRouter.post("/activate", async (req, res) => {
     }
   }
 
+  // في الإنتاج، يجب أن يكون هناك userId صحيح
+  if (!userId && process.env.NODE_ENV !== "development") {
+    return res.status(401).json({
+      ok: false,
+      error: "authentication_required",
+      message: "Valid Telegram authentication is required"
+    });
+  }
+
+  // في التطوير فقط، نسمح باستخدام DEV_USER_ID
   if (!userId) {
     userId = Number(process.env.DEV_USER_ID || 999999999);
   }
