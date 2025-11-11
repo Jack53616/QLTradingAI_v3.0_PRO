@@ -1,144 +1,82 @@
-// QL Trading AI v3.0 PRO - Enhanced Frontend
-// Combines beautiful old design with new secure backend
+// ============================================
+// QL Trading AI v3.0 PRO - Frontend
+// ============================================
 
-const TWA = window.Telegram?.WebApp;
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => document.querySelectorAll(s);
+
 const API_BASE = window.location.origin;
 
-// State
 const state = {
-  lang: localStorage.getItem("ql_lang") || "ar",
   user: null,
+  markets: [],
+  trades: [],
   tg_id: null,
-  initData: null,
-  method: "usdt_trc20",
-  musicOn: false,
-  feedTimer: null,
-  markets: {},
-  trades: []
+  lang: "ar",
+  feedTimer: null
 };
 
-// i18n
-const i18n = {
-  en: {
-    gateTitle: "QL Trading — Access",
-    gateSub: "Enter your subscription key to unlock your wallet",
-    confirm: "Confirm",
-    buyKey: "Buy a key",
-    tabWallet: "Home",
-    tabMarkets: "Markets",
-    tabTrades: "My Trades",
-    tabWithdraw: "Withdraw",
-    tabRequests: "Requests",
-    tabSupport: "Support",
-    noOpenTrade: "No open trade",
-    withdraw: "Withdraw",
-    markets: "Markets",
-    support: "Support",
-    day: "Day",
-    month: "Month",
-    subLeft: "Subscription",
-    recent: "Recent activity",
-    live: "Live feed",
-    withdrawCrypto: "Withdraw (Crypto only)",
-    request: "Request",
-    savedAddr: "* Saved address for selected method will be used.",
-    deposit: "Deposit",
-    yourRequests: "Your requests",
-    supportCenter: "Support Center",
-    chooseMethod: "Choose withdraw method",
-    cancel: "Cancel",
-    myTrades: "My Trades",
-    save: "Save"
-  },
-  ar: {
-    gateTitle: "QL Trading — دخول",
-    gateSub: "أدخل مفتاح الاشتراك لفتح محفظتك",
-    confirm: "تأكيد",
-    buyKey: "شراء مفتاح",
-    tabWallet: "الرئيسية",
-    tabMarkets: "الأسواق",
-    tabTrades: "صفقاتي",
-    tabWithdraw: "السحب",
-    tabRequests: "الطلبات",
-    tabSupport: "الدعم",
-    noOpenTrade: "لا توجد صفقة مفتوحة",
-    withdraw: "سحب",
-    markets: "أسواق",
-    support: "الدعم",
-    day: "اليوم",
-    month: "الشهر",
-    subLeft: "الاشتراك",
-    recent: "النشاط الأخير",
-    live: "بث مباشر",
-    withdrawCrypto: "سحب (عملات رقمية فقط)",
-    request: "طلب",
-    savedAddr: "* سيتم استخدام العنوان المحفوظ للطريقة المحددة.",
-    deposit: "إيداع",
-    yourRequests: "طلباتك",
-    supportCenter: "مركز الدعم",
-    chooseMethod: "اختر طريقة السحب",
-    cancel: "إلغاء",
-    myTrades: "صفقاتي",
-    save: "حفظ"
+// Telegram WebApp
+if (window.Telegram?.WebApp) {
+  const tg = window.Telegram.WebApp;
+  tg.ready();
+  tg.expand();
+  
+  const user = tg.initDataUnsafe?.user;
+  if (user?.id) {
+    state.tg_id = user.id;
   }
-};
-
-function t(key) {
-  const lang = state.lang;
-  return (i18n[lang] && i18n[lang][key]) || (i18n.en[key] || key);
 }
 
-function applyI18n() {
-  document.querySelectorAll("[data-i18n]").forEach(el => {
-    el.textContent = t(el.dataset.i18n);
-  });
-  document.body.dir = (state.lang === "ar") ? "rtl" : "ltr";
-}
-
-const $ = (q) => document.querySelector(q);
-const $$ = (q) => document.querySelectorAll(q);
-
-// Detect Telegram
-function detectTG() {
+// API Call
+async function apiCall(path, opts = {}) {
   try {
-    if (TWA) {
-      TWA.ready();
-      TWA.expand();
-      const initDataUnsafe = TWA.initDataUnsafe;
-      state.tg_id = initDataUnsafe?.user?.id || null;
-      state.initData = TWA.initData || null;
+    const headers = {
+      "Content-Type": "application/json",
+      ...opts.headers
+    };
+
+    // Add Telegram WebApp init data for authentication
+    if (window.Telegram?.WebApp?.initData) {
+      headers["X-Telegram-Init-Data"] = window.Telegram.WebApp.initData;
     }
-  } catch {
-    state.tg_id = null;
-    state.initData = null;
-  }
-}
 
-// API Helper
-async function apiCall(endpoint, options = {}) {
-  const headers = {
-    "Content-Type": "application/json",
-    ...options.headers
-  };
-
-  // إضافة Telegram initData للمصادقة
-  if (state.initData) {
-    headers["x-telegram-initdata"] = state.initData;
-  }
-
-  try {
-    const response = await fetch(`${API_BASE}${endpoint}`, {
-      ...options,
+    const res = await fetch(API_BASE + path, {
+      ...opts,
       headers
     });
 
-    const data = await response.json();
+    if (!res.ok && res.status >= 500) {
+      console.error("Server error:", res.status);
+      return { ok: false, error: "Server error" };
+    }
+
+    const data = await res.json();
     return data;
   } catch (err) {
-    console.error("API Error:", err);
-    return { ok: false, error: "network_error" };
+    console.error("API call failed:", err);
+    return { ok: false, error: err.message };
   }
 }
+
+// Initialize
+window.addEventListener("DOMContentLoaded", async () => {
+  // Hide splash after delay
+  setTimeout(() => {
+    const splash = $(".splash");
+    if (splash) {
+      splash.style.opacity = "0";
+      setTimeout(() => splash.remove(), 600);
+    }
+  }, 2000);
+
+  // Try to open app
+  const opened = await openApp();
+  
+  if (!opened) {
+    showGate();
+  }
+});
 
 // Toast
 function toast(msg) {
@@ -155,33 +93,63 @@ function notify(msg) {
   el.className = "feed item";
   el.textContent = msg;
   $("#feed")?.prepend(el);
-  // Sound removed
   setTimeout(() => { el.remove(); }, 6000);
 }
 
-// Gate
+// ============================================
+// GATE FUNCTIONS - FIXED
+// ============================================
+
 function showGate() {
+  console.log("🔒 Showing gate...");
+  
+  // Stop feed timer
   if (state.feedTimer) {
     clearInterval(state.feedTimer);
     state.feedTimer = null;
   }
+  
+  // Hide app completely
+  const app = $("#app");
+  if (app) {
+    app.style.display = "none";
+  }
+  
+  // Show gate
+  const gate = $("#gate");
+  if (gate) {
+    gate.style.display = "flex";
+    gate.classList.remove("hidden");
+  }
+  
   document.body.classList.add("is-gated");
-  $("#gate")?.classList.remove("hidden");
-  $("#app")?.classList.add("hidden");
+  console.log("✅ Gate shown");
 }
 
 function unlockGate() {
-  // Remove gated class first
-  document.body.classList.remove("is-gated");
+  console.log("🔓 Unlocking gate...");
   
-  // Add a small delay to ensure smooth transition
-  setTimeout(() => {
-    $("#gate")?.classList.add("hidden");
-    $("#app")?.classList.remove("hidden");
-  }, 100);
+  // Hide gate completely
+  const gate = $("#gate");
+  if (gate) {
+    gate.style.display = "none";
+    gate.classList.add("hidden");
+  }
+  
+  // Show app
+  const app = $("#app");
+  if (app) {
+    app.style.display = "block";
+  }
+  
+  document.body.classList.remove("is-gated");
+  console.log("✅ Gate unlocked, app visible");
 }
 
-// Activate Key
+// ============================================
+// ACTIVATION
+// ============================================
+
 const gateBtn = $("#g-activate");
 gateBtn?.addEventListener("click", async () => {
   if (gateBtn.disabled) return;
@@ -190,7 +158,10 @@ gateBtn?.addEventListener("click", async () => {
   const name = $("#g-name")?.value?.trim();
   const email = $("#g-email")?.value?.trim();
 
-  if (!key) return toast("Enter key");
+  if (!key) {
+    toast("أدخل مفتاح الاشتراك");
+    return;
+  }
 
   const restore = gateBtn.textContent;
   gateBtn.disabled = true;
@@ -208,45 +179,55 @@ gateBtn?.addEventListener("click", async () => {
     });
 
     if (!result?.ok) {
-      toast(result?.message || result?.error || "Invalid key");
+      toast(result?.message || result?.error || "مفتاح غير صالح");
+      gateBtn.disabled = false;
+      gateBtn.textContent = restore;
       return;
     }
 
-    toast("✅ Activated successfully!");
+    toast("✅ تم التفعيل بنجاح!");
     
     // Clear inputs
     $("#g-key").value = "";
     $("#g-name").value = "";
     $("#g-email").value = "";
     
-    // Small delay before opening app for better UX
+    // Wait a bit then open app
     setTimeout(async () => {
       await openApp();
-    }, 500);
+    }, 800);
+    
   } catch (err) {
     console.error("Activation failed", err);
-    toast("Connection error");
-  } finally {
+    toast("خطأ في الاتصال");
     gateBtn.disabled = false;
     gateBtn.textContent = restore;
   }
 });
 
-// Open App
+// ============================================
+// OPEN APP
+// ============================================
+
 async function openApp() {
+  console.log("🚀 Opening app...");
+  
   try {
     const result = await apiCall("/api/users/me");
     
     if (!result?.ok || !result?.user) {
-      showGate();
+      console.log("❌ User not found or not activated");
       return false;
     }
 
+    console.log("✅ User loaded:", result.user);
     state.user = result.user;
     hydrateUser(result.user);
+    
+    // Unlock gate FIRST
     unlockGate();
     
-    // Load data
+    // Then load data
     await Promise.all([
       refreshMarkets(),
       refreshTrades(),
@@ -259,7 +240,6 @@ async function openApp() {
     return true;
   } catch (err) {
     console.error("Failed to open app", err);
-    showGate();
     return false;
   }
 }
@@ -289,235 +269,153 @@ async function refreshUser() {
   return false;
 }
 
-// Markets - Real prices from API
+// ============================================
+// MARKETS
+// ============================================
+
 async function refreshMarkets() {
-  try {
-    const result = await apiCall("/api/markets");
-    if (!result?.ok || !result?.markets) return;
-
-    state.markets = {};
-    result.markets.forEach(m => {
-      state.markets[m.pair] = m;
-    });
-
-    // Update UI
-    $$(".mkt").forEach(card => {
-      const sym = card.dataset.sym;
-      const market = state.markets[sym];
-      
-      if (market) {
-        card.querySelector(".price").textContent = "$" + Number(market.price || 0).toFixed(2);
-        
-        const change = Number(market.change24h || 0);
-        const pct = card.querySelector(".pct");
-        pct.textContent = (change >= 0 ? "+" : "") + change.toFixed(2) + "%";
-        pct.style.color = (change >= 0) ? "#9df09d" : "#ff8899";
-        
-        // Draw sparkline
-        drawSparkline(card.querySelector("canvas"), change);
-      }
-    });
-  } catch (err) {
-    console.error("Markets refresh error:", err);
+  const result = await apiCall("/api/markets");
+  if (result?.ok && result?.markets) {
+    state.markets = result.markets;
+    renderMarkets(result.markets);
   }
 }
 
-function drawSparkline(canvas, trend) {
-  if (!canvas) return;
-  const ctx = canvas.getContext("2d");
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.beginPath();
-  
-  let y = 40 + (Math.random() * 8);
-  ctx.moveTo(0, y);
-  
-  for (let x = 0; x < canvas.width; x += 8) {
-    y += (Math.random() - 0.5) * 4 + (trend > 0 ? -0.1 : 0.1);
-    y = Math.max(10, Math.min(50, y));
-    ctx.lineTo(x, y);
-  }
-  
-  ctx.lineWidth = 2;
-  ctx.strokeStyle = "#7fe0ff";
-  ctx.stroke();
+function renderMarkets(markets) {
+  const grid = $("#marketsGrid");
+  if (!grid) return;
+
+  grid.innerHTML = markets.map(m => `
+    <div class="mkt card glass">
+      <div class="mh">
+        <span>${m.name}</span>
+        <span style="color:${m.change >= 0 ? '#9df09d' : '#ff8899'}">${m.change >= 0 ? '+' : ''}${m.change.toFixed(2)}%</span>
+      </div>
+      <div class="price">$${Number(m.price).toFixed(2)}</div>
+    </div>
+  `).join("");
 }
 
-// Trades
+// ============================================
+// TRADES
+// ============================================
+
 async function refreshTrades() {
-  try {
-    const result = await apiCall("/api/trades/me");
-    if (result?.ok && result?.trades) {
-      state.trades = result.trades;
-    }
-  } catch (err) {
-    console.error("Trades refresh error:", err);
+  const result = await apiCall("/api/trades/me");
+  if (result?.ok) {
+    state.trades = result.trades || [];
+    renderTrades(result.trades || []);
   }
+}
+
+function renderTrades(trades) {
+  const list = $("#tradesList");
+  if (!list) return;
+
+  if (!trades || trades.length === 0) {
+    list.innerHTML = '<div class="op" style="justify-content:center">لا توجد صفقات</div>';
+    return;
+  }
+
+  list.innerHTML = trades.map(t => {
+    const status = t.closed_at ? "مغلقة" : "مفتوحة";
+    const color = t.profit >= 0 ? "#9df09d" : "#ff8899";
+    return `
+      <div class="op">
+        <div>
+          <div>${t.pair} • ${t.type}</div>
+          <small style="color:var(--muted)">${status} • $${Number(t.amount).toFixed(2)}</small>
+        </div>
+        <div style="color:${color}; font-weight:700">${t.profit >= 0 ? '+' : ''}$${Number(t.profit).toFixed(2)}</div>
+      </div>
+    `;
+  }).join("");
 }
 
 async function loadTrades() {
-  const box = $("#tradesList");
-  if (!box) return;
-  
-  box.innerHTML = "";
-  
-  if (state.trades.length === 0) {
-    box.innerHTML = '<div class="op"><span>No trades yet</span></div>';
-    return;
-  }
-  
-  state.trades.forEach(trade => {
-    const div = document.createElement("div");
-    div.className = "op";
-    const profit = Number(trade.profit || 0);
-    const profitClass = profit >= 0 ? "profit" : "loss";
-    div.innerHTML = `
-      <span>${trade.pair} • ${trade.type}</span>
-      <b class="${profitClass}">${profit >= 0 ? "+" : ""}$${profit.toFixed(2)}</b>
-    `;
-    box.appendChild(div);
-  });
+  await refreshTrades();
 }
 
-// Withdraw
-const sheet = $("#sheet");
-$("#pickMethod")?.addEventListener("click", () => sheet?.classList.add("show"));
-$("#sCancel")?.addEventListener("click", () => sheet?.classList.remove("show"));
+// ============================================
+// WITHDRAW
+// ============================================
 
-$$(".s-item").forEach(b => {
-  b.addEventListener("click", () => {
-    state.method = b.dataset.method;
-    $("#methodLabel").textContent = b.textContent;
-    renderMethod();
-    sheet?.classList.remove("show");
-  });
+const withdrawBtn = $("#withdrawBtn");
+withdrawBtn?.addEventListener("click", () => {
+  $("#withdrawSheet")?.classList.remove("hidden");
 });
 
-function renderMethod() {
-  const map = {
-    usdt_trc20: "USDT (TRC20)",
-    usdt_erc20: "USDT (ERC20)",
-    btc: "Bitcoin",
-    eth: "Ethereum"
-  };
-  
-  $("#methodLabel").textContent = map[state.method] || "USDT (TRC20)";
-  
-  const view = $("#methodView");
-  if (view) {
-    view.innerHTML = `
-      <div class="muted">Saved address:</div>
-      <input id="addr" class="input" placeholder="Your ${map[state.method] || 'Wallet'} address..."/>
-      <button id="saveAddr" class="btn">Save</button>
-    `;
-    
-    $("#saveAddr").onclick = async () => {
-      const address = $("#addr").value.trim();
-      notify("✅ Address saved");
-    };
-  }
-}
+$$(".s-item").forEach(btn => {
+  btn.addEventListener("click", async () => {
+    const method = btn.dataset.method;
+    const address = prompt(`أدخل عنوان ${method}:`);
+    if (!address) return;
 
-$("#reqWithdraw")?.addEventListener("click", async () => {
-  const amount = Number($("#amount")?.value || 0);
-  if (amount <= 0) return notify("Enter amount");
-
-  const result = await apiCall("/api/withdraw", {
-    method: "POST",
-    body: JSON.stringify({
-      amount,
-      method: state.method.toUpperCase().replace("_", "-"),
-      address: $("#addr")?.value?.trim() || null
-    })
-  });
-
-  if (!result?.ok) {
-    return notify("❌ " + (result?.message || result?.error || "Error"));
-  }
-
-  notify("✅ Request sent");
-  
-  // Update balance
-  if (result.new_balance !== undefined) {
-    state.user.balance = result.new_balance;
-    $("#balance").textContent = "$" + Number(result.new_balance).toFixed(2);
-  }
-  
-  await refreshUser();
-  await refreshRequests();
-});
-
-// Requests
-async function refreshRequests() {
-  try {
-    const result = await apiCall("/api/withdraw/history");
-    const box = $("#reqList");
-    if (!box) return;
-    
-    box.innerHTML = "";
-    
-    if (!result?.ok || !result?.requests || result.requests.length === 0) {
-      box.innerHTML = '<div class="op"><span>No requests yet</span></div>';
+    const amount = prompt("أدخل المبلغ:");
+    if (!amount || isNaN(amount) || Number(amount) <= 0) {
+      toast("مبلغ غير صالح");
       return;
     }
-    
-    result.requests.forEach(req => {
-      const div = document.createElement("div");
-      div.className = "op";
-      div.innerHTML = `
-        <span>#${req.id} — ${req.method} — ${req.status}</span>
-        <b>$${Number(req.amount).toFixed(2)}</b>
-      `;
-      box.appendChild(div);
-    });
-  } catch (err) {
-    console.error("Requests refresh error:", err);
-  }
-}
 
-// Live Feed (Fake notifications)
-const names = [
-  "أحمد", "محمد", "خالد", "سارة", "رامي", "نور", "ليلى", "وسيم", "حسن", "طارق",
-  "فاطمة", "علي", "زينب", "عمر", "مريم", "يوسف", "هدى", "كريم", "دينا", "ماجد",
-  "ريم", "سامي", "لينا", "فارس", "منى", "عادل", "سلمى", "بشار", "رنا", "جمال"
+    const result = await apiCall("/api/withdraw", {
+      method: "POST",
+      body: JSON.stringify({ method, address, amount: Number(amount) })
+    });
+
+    if (result?.ok) {
+      toast("✅ تم إرسال طلب السحب");
+      $("#withdrawSheet")?.classList.add("hidden");
+      await refreshUser();
+    } else {
+      toast(result?.error || "فشل طلب السحب");
+    }
+  });
+});
+
+$(".s-cancel")?.addEventListener("click", () => {
+  $("#withdrawSheet")?.classList.add("hidden");
+});
+
+// ============================================
+// FAKE ACTIVITY FEED
+// ============================================
+
+const fakeNames = [
+  "أحمد محمد", "محمد علي", "خالد أحمد", "عمر يوسف", "يوسف خالد",
+  "علي حسن", "حسن محمود", "محمود عبدالله", "عبدالله سعيد", "سعيد ناصر",
+  "ناصر فهد", "فهد سلطان", "سلطان راشد", "راشد مبارك", "مبارك سالم",
+  "سالم عادل", "عادل كريم", "كريم طارق", "طارق وليد", "وليد ماجد",
+  "سارة أحمد", "فاطمة علي", "نور محمد", "ريم خالد", "لينا حسن",
+  "مريم يوسف", "هدى سعيد", "دانة ناصر", "شهد فهد", "جنى سلطان"
 ];
 
 function startFeed() {
-  if (state.feedTimer) clearInterval(state.feedTimer);
-  
-  const feed = $("#feed");
-  if (!feed) return;
-  
-  const push = (txt) => {
-    const it = document.createElement("div");
-    it.className = "item";
-    it.textContent = txt;
-    feed.prepend(it);
-    // Sound removed
-    while (feed.childElementCount > 12) feed.lastChild.remove();
-  };
-  
   const once = () => {
-    const r = Math.random();
-    const name = names[Math.floor(Math.random() * names.length)];
+    const name = fakeNames[Math.floor(Math.random() * fakeNames.length)];
+    const type = Math.random();
+    let msg;
     
-    if (r < 0.34) {
-      const v = 50 + Math.floor(Math.random() * 200);
-      push(`🪙 ${name} سحب ${v}$ بنجاح`);
-    } else if (r < 0.67) {
-      const v = 20 + Math.floor(Math.random() * 120);
-      const m = ["Gold", "BTC", "ETH", "Silver"][Math.floor(Math.random() * 4)];
-      push(`💰 ${name} ربح ${v}$ من صفقة ${m}`);
+    if (type < 0.33) {
+      const amount = (Math.random() * 200 + 50).toFixed(2);
+      msg = `🪙 ${name} قام بسحب $${amount}`;
+    } else if (type < 0.66) {
+      const profit = (Math.random() * 150 + 20).toFixed(2);
+      msg = `💰 ${name} حقق ربح $${profit}`;
     } else {
-      const v = 150 + Math.floor(Math.random() * 400);
-      push(`🎉 مستخدم جديد انضم وأودع ${v}$`);
+      msg = `👋 ${name} انضم للمنصة`;
     }
+    
+    notify(msg);
   };
   
   once();
   state.feedTimer = setInterval(once, 20000); // Every 20 seconds
 }
 
-// Balance Ticker (Fake movement ONLY when trade is open)
+// ============================================
+// BALANCE TICKER
+// ============================================
+
 let tickerI = 0;
 function startBalanceTicker() {
   setInterval(() => {
@@ -527,13 +425,13 @@ function startBalanceTicker() {
     const hasOpenTrades = state.trades && state.trades.some(t => !t.closed_at);
     
     if (!hasOpenTrades) {
-      // No open trades - show static balance
+      // No open trades - show static
       const ticker = $("#ticker");
       if (ticker) {
         ticker.textContent = "+0.00";
         ticker.style.color = "#9df09d";
       }
-      return; // Don't move balance
+      return;
     }
     
     // Simulate balance movement ONLY when trades are open
@@ -558,91 +456,33 @@ function startBalanceTicker() {
       const y = 12 + Math.sin(tickerI / 8) * 3 + (dir > 0 ? -1 : 1);
       p.setAttribute("d", `M0,18 C15,12 22,16 30,15 C40,14 52,10 60,12 C70,14 82,${y} 100,12`);
     }
-  }, 2000); // Every 2 seconds
+  }, 2000);
 }
 
-// Tabs
+// ============================================
+// TABS
+// ============================================
+
 $$(".seg-btn").forEach(btn => {
   btn.addEventListener("click", () => {
-    const tab = btn.dataset.tab;
+    const target = btn.dataset.tab;
     
     $$(".seg-btn").forEach(b => b.classList.remove("active"));
     btn.classList.add("active");
     
     $$(".tab").forEach(t => t.classList.remove("show"));
-    $(`#tab-${tab}`)?.classList.add("show");
-    
-    // Refresh data when switching tabs
-    if (tab === "markets") refreshMarkets();
-    if (tab === "trades") loadTrades();
-    if (tab === "requests") refreshRequests();
+    $(`#${target}`)?.classList.add("show");
   });
 });
 
-// Quick actions
-$("#goWithdraw")?.addEventListener("click", () => {
-  $$(".seg-btn").forEach(b => b.classList.remove("active"));
-  $(".seg-btn[data-tab='withdraw']")?.classList.add("active");
-  $$(".tab").forEach(t => t.classList.remove("show"));
-  $("#tab-withdraw")?.classList.add("show");
-});
+// ============================================
+// LANGUAGE TOGGLE
+// ============================================
 
-$("#goMarkets")?.addEventListener("click", () => {
-  $$(".seg-btn").forEach(b => b.classList.remove("active"));
-  $(".seg-btn[data-tab='markets']")?.classList.add("active");
-  $$(".tab").forEach(t => t.classList.remove("show"));
-  $("#tab-markets")?.classList.add("show");
-  refreshMarkets();
-});
-
-$("#goSupport")?.addEventListener("click", () => {
-  $$(".seg-btn").forEach(b => b.classList.remove("active"));
-  $(".seg-btn[data-tab='support']")?.classList.add("active");
-  $$(".tab").forEach(t => t.classList.remove("show"));
-  $("#tab-support")?.classList.add("show");
-});
-
-// Language toggle
-$("#btnLang")?.addEventListener("click", () => {
+$("#langBtn")?.addEventListener("click", () => {
   state.lang = state.lang === "ar" ? "en" : "ar";
-  localStorage.setItem("ql_lang", state.lang);
-  applyI18n();
+  document.documentElement.setAttribute("dir", state.lang === "ar" ? "rtl" : "ltr");
+  // Here you can add translation logic
 });
 
-// Music toggle
-$("#btnMusic")?.addEventListener("click", () => {
-  state.musicOn = !state.musicOn;
-  // Add music functionality if needed
-  notify(state.musicOn ? "🎵 Music ON" : "🔇 Music OFF");
-});
-
-// WhatsApp
-$("#whatsapp")?.addEventListener("click", () => {
-  window.open("https://wa.me/message/P6BBPSDL2CC4D1", "_blank");
-});
-
-// SL/TP Save
-$("#saveSLTP")?.addEventListener("click", () => {
-  notify("✅ SL/TP saved");
-});
-
-// Splash
-setTimeout(() => {
-  $("#splash")?.classList.add("hidden");
-}, 1800);
-
-// Boot
-(async function() {
-  detectTG();
-  applyI18n();
-  renderMethod();
-  
-  // Try to open app automatically
-  const opened = await openApp();
-  if (!opened) {
-    showGate();
-  }
-  
-  // Refresh markets every 30 seconds
-  setInterval(refreshMarkets, 30000);
-})();
+console.log("✅ QL Trading AI v3.0 PRO initialized");
