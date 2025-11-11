@@ -1,61 +1,61 @@
 {
   "subscription": {
-    "title": "🔑 Enter Subscription Key",
-    "subtitle": "Access your premium dashboard with your activation key.",
-    "activate": "Activate",
-    "placeholder": "Enter your activation key",
-    "buy": "Buy a key 💬"
+    "title": "🔑 Abonnement-Schlüssel eingeben",
+    "subtitle": "Aktiviere das Premium-Dashboard mit deinem Schlüssel.",
+    "activate": "Aktivieren",
+    "placeholder": "Aktivierungsschlüssel eingeben",
+    "buy": "Schlüssel kaufen 💬"
   },
   "tabs": {
-    "markets": "Markets",
+    "markets": "Märkte",
     "trades": "Trades",
-    "withdraw": "Withdraw",
-    "feed": "Live Feed"
+    "withdraw": "Auszahlung",
+    "feed": "Live-Feed"
   },
   "wallet": {
-    "balance": "Total Balance",
-    "user": "User",
-    "expires": "Subscription expires",
-    "subtitle": "Stay funded and enjoy automated trades.",
-    "unknown": "Guest",
-    "noSubscription": "No active subscription"
+    "balance": "Gesamtsaldo",
+    "user": "Benutzer",
+    "expires": "Abo läuft ab",
+    "subtitle": "Bleib kapitalisiert und nutze automatisierte Trades.",
+    "unknown": "Gast",
+    "noSubscription": "Kein aktives Abonnement"
   },
   "markets": {
-    "title": "Live Markets",
-    "updated": "Updated just now",
-    "empty": "Market data is temporarily unavailable."
+    "title": "Live-Märkte",
+    "updated": "Soeben aktualisiert",
+    "empty": "Marktdaten sind vorübergehend nicht verfügbar"
   },
   "trades": {
-    "title": "Recent Trades",
-    "empty": "No trades yet. Activate your subscription to start."
+    "title": "Neueste Trades",
+    "empty": "Noch keine Trades. Aktiviere dein Abo, um zu starten."
   },
   "withdraw": {
-    "title": "Request Withdrawal",
-    "method": "Method",
-    "address": "Address / IBAN",
-    "amount": "Amount",
-    "submit": "Send Request",
-    "addressPlaceholder": "Enter wallet address or IBAN",
-    "amountPlaceholder": "Requested amount",
+    "title": "Auszahlungsanfrage",
+    "method": "Methode",
+    "address": "Adresse / IBAN",
+    "amount": "Betrag",
+    "submit": "Anfrage senden",
+    "addressPlaceholder": "Wallet-Adresse oder IBAN eingeben",
+    "amountPlaceholder": "Gewünschter Betrag",
     "methods": {
       "usdt": "USDT (TRC20)",
       "btc": "Bitcoin",
-      "bank": "Bank Transfer"
+      "bank": "Banküberweisung"
     }
   },
   "feed": {
-    "title": "Community Activity"
+    "title": "Community-Aktivität"
   },
   "errors": {
-    "keyRequired": "Please enter your activation key first.",
-    "invalidKey": "This key is invalid or already used.",
-    "server": "Server error. Please try again.",
-    "withdrawFailed": "Withdrawal request failed."
+    "keyRequired": "Bitte zuerst deinen Aktivierungsschlüssel eingeben.",
+    "invalidKey": "Dieser Schlüssel ist ungültig oder bereits verwendet.",
+    "server": "Serverfehler. Bitte erneut versuchen.",
+    "withdrawFailed": "Auszahlungsanfrage fehlgeschlagen."
   },
   "messages": {
-    "activating": "Activating...",
-    "activated": "✅ Key activated successfully!",
-    "sending": "Sending request...",
-    "withdrawSuccess": "✅ Withdrawal request sent."
+    "activating": "Wird aktiviert...",
+    "activated": "✅ Schlüssel erfolgreich aktiviert!",
+    "sending": "Anfrage wird gesendet...",
+    "withdrawSuccess": "✅ Auszahlungsanfrage gesendet."
   }
 }
