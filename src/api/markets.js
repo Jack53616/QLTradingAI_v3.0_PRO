@@ -29,7 +29,7 @@ async function fetchRealPrices() {
         name: "Bitcoin",
         symbol: "BTC",
         price: cryptoData.bitcoin.usd,
-        change24h: cryptoData.bitcoin.usd_24h_change || 0,
+        change: cryptoData.bitcoin.usd_24h_change || 0,
         type: "crypto"
       });
     }
@@ -40,7 +40,7 @@ async function fetchRealPrices() {
         name: "Ethereum",
         symbol: "ETH",
         price: cryptoData.ethereum.usd,
-        change24h: cryptoData.ethereum.usd_24h_change || 0,
+        change: cryptoData.ethereum.usd_24h_change || 0,
         type: "crypto"
       });
     }
@@ -63,7 +63,7 @@ async function fetchRealPrices() {
             name: "Gold",
             symbol: "XAU",
             price: gold.price,
-            change24h: ((gold.price - gold.previous_close) / gold.previous_close * 100) || 0,
+            change: ((gold.price - gold.previous_close) / gold.previous_close * 100) || 0,
             type: "metal"
           });
         }
@@ -74,7 +74,7 @@ async function fetchRealPrices() {
             name: "Silver",
             symbol: "XAG",
             price: silver.price,
-            change24h: ((silver.price - silver.previous_close) / silver.previous_close * 100) || 0,
+            change: ((silver.price - silver.previous_close) / silver.previous_close * 100) || 0,
             type: "metal"
           });
         }
@@ -91,7 +91,7 @@ async function fetchRealPrices() {
         name: "Gold",
         symbol: "XAU",
         price: goldBase,
-        change24h: (Math.random() * 2 - 1), // -1% to +1%
+        change: (Math.random() * 2 - 1), // -1% to +1%
         type: "metal"
       });
 
@@ -100,7 +100,7 @@ async function fetchRealPrices() {
         name: "Silver",
         symbol: "XAG",
         price: silverBase,
-        change24h: (Math.random() * 3 - 1.5), // -1.5% to +1.5%
+        change: (Math.random() * 3 - 1.5), // -1.5% to +1.5%
         type: "metal"
       });
     }
@@ -116,7 +116,7 @@ async function fetchRealPrices() {
         name: "Gold",
         symbol: "XAU",
         price: 2650 + (Math.random() * 50 - 25),
-        change24h: (Math.random() * 2 - 1),
+        change: (Math.random() * 2 - 1),
         type: "metal"
       },
       {
@@ -124,7 +124,7 @@ async function fetchRealPrices() {
         name: "Silver",
         symbol: "XAG",
         price: 31 + (Math.random() * 2 - 1),
-        change24h: (Math.random() * 3 - 1.5),
+        change: (Math.random() * 3 - 1.5),
         type: "metal"
       },
       {
@@ -132,7 +132,7 @@ async function fetchRealPrices() {
         name: "Bitcoin",
         symbol: "BTC",
         price: 90000 + (Math.random() * 5000 - 2500),
-        change24h: (Math.random() * 4 - 2),
+        change: (Math.random() * 4 - 2),
         type: "crypto"
       },
       {
@@ -140,7 +140,7 @@ async function fetchRealPrices() {
         name: "Ethereum",
         symbol: "ETH",
         price: 3200 + (Math.random() * 200 - 100),
-        change24h: (Math.random() * 5 - 2.5),
+        change: (Math.random() * 5 - 2.5),
         type: "crypto"
       }
     ];
