@@ -10,7 +10,8 @@ usersRouter.get("/", ensureAdmin, async (_req, res) => {
     const { rows } = await pool.query(
       "SELECT id, name, email, level, balance, sub_expires FROM users ORDER BY id DESC"
     );
-    res.json({ ok: true, users: rows });
+    const usersWithAlias = rows.map(u => ({ ...u, tg_id: u.id }));
+    res.json({ ok: true, users: usersWithAlias });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
@@ -32,7 +33,8 @@ usersRouter.get("/:tg", async (req, res) => {
       return res.json({ ok: false, error: "user_not_found" });
     }
 
-    res.json({ ok: true, user: rows[0] });
+    const userWithAlias = { ...rows[0], tg_id: rows[0].id };
+    res.json({ ok: true, user: userWithAlias });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }
@@ -60,7 +62,8 @@ usersRouter.get("/me", async (req, res) => {
       rows = insert;
     }
 
-    res.json({ ok: true, user: rows[0] });
+    const userWithAlias = { ...rows[0], tg_id: rows[0].id };
+    res.json({ ok: true, user: userWithAlias });
   } catch (err) {
     res.status(500).json({ ok: false, error: err.message });
   }

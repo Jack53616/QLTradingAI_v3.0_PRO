@@ -81,7 +81,9 @@ authRouter.post("/activate", async (req, res) => {
       [user.id, keyHash]
     );
 
-    res.json({ ok: true, user });
+    // Add tg_id alias for frontend compatibility
+    const userWithAlias = { ...user, tg_id: user.id };
+    res.json({ ok: true, user: userWithAlias });
   } catch (err) {
     console.error("Activate error:", err);
     res.status(500).json({ ok: false, error: err.message });
