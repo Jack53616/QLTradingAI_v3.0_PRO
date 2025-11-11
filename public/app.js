@@ -57,8 +57,8 @@ async function apiCall(path, opts = {}) {
       headers["X-Telegram-Init-Data"] = window.Telegram.WebApp.initData;
     }
 
-    // For development: add tg_id to query if available
-    if (state.tg_id && !window.Telegram?.WebApp?.initData) {
+    // Always add tg_id to query if available (fallback authentication)
+    if (state.tg_id) {
       const url = new URL(API_BASE + path);
       url.searchParams.set('tg_id', state.tg_id);
       path = url.pathname + url.search;

@@ -1,23 +1,38 @@
 import { parseTelegramInitData, verifyTelegramInitData } from "../utils/telegram.js";
-import { warn } from "../utils/logger.js";
+import { warn, log } from "../utils/logger.js";
 
 /**
  * Secure Telegram WebApp authentication middleware
- * Only allows access from valid Telegram WebApp with proper initData
+ * Allows access with:
+ * 1. Valid Telegram initData (production)
+ * 2. tg_id in query/body (development/testing)
  */
 export function secureAccess(req, res, next) {
   const initData = req.get("x-telegram-initdata");
+  
+  // Try to get tg_id from query or body first
+  const tgId = req.query.tg_id || req.body?.tg_id;
+  
+  // If we have tg_id, use it (for development or when initData is not available)
+  if (tgId) {
+    log("✅ Using tg_id from request", { tg_id: tgId, path: req.path });
+    req.telegram = {
+      id: Number(tgId),
+      first_name: "User",
+      username: "telegram_user",
+    };
+    return next();
+  }
 
-  // في وضع التطوير فقط، نسمح بالوصول
+  // في وضع التطوير، نسمح بـ fallback
   if (process.env.NODE_ENV !== "production") {
-    // Try to get user ID from query or body as fallback
-    const fallbackId = req.query.tg_id || req.body?.tg_id || process.env.DEV_USER_ID;
+    const fallbackId = process.env.DEV_USER_ID;
     if (fallbackId) {
-      warn("⚠️ Development mode: using fallback authentication", { tg_id: fallbackId });
+      warn("⚠️ Development mode: using DEV_USER_ID", { tg_id: fallbackId });
       req.telegram = {
         id: Number(fallbackId),
-        first_name: "TestUser",
-        username: "test_user",
+        first_name: "DevUser",
+        username: "dev_user",
       };
       return next();
     }
@@ -25,7 +40,7 @@ export function secureAccess(req, res, next) {
 
   // في الإنتاج، يجب أن يكون هناك initData
   if (!initData) {
-    warn("⚠️ Missing Telegram initData", {
+    warn("⚠️ Missing Telegram initData and tg_id", {
       path: req.path,
       method: req.method,
     });
