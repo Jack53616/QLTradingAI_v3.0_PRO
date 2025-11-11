@@ -24,10 +24,24 @@ if (telegram) {
   state.initData = telegram.initData;
 }
 
-const telegramUser = telegram?.initDataUnsafe?.user || null;
+let telegramUser = telegram?.initDataUnsafe?.user || null;
 
-if (!state.initData && IS_DEV) {
-  console.warn("⚠️ Development mode: No Telegram initData available");
+// 🧩 Fallback for dev / web mode
+if (!telegramUser) {
+  console.warn("⚠️ No Telegram user detected — using fallback dev user");
+  telegramUser = {
+    id: 999999,
+    first_name: "DevUser",
+    username: "test_user",
+  };
+  state.initData = "dev-mode";
+}
+
+// 🧭 Mode info
+if (telegram && telegram.initData) {
+  console.log("✅ Telegram Mode Active");
+} else {
+  console.log("💻 Web Dev Mode Active");
 }
 
 // 🧠 Translation helper
@@ -115,7 +129,7 @@ function updateProfile() {
   }
 }
 
-// ⚙️ API Fetch wrapper (improved)
+// ⚙️ API Fetch wrapper
 async function apiFetch(url, options = {}) {
   const base =
     window.API_BASE_URL ||
