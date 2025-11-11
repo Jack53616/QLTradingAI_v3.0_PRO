@@ -186,12 +186,17 @@ function hideGate() {
   }
   
   if (app) {
+    // Remove hidden class first to override display:none !important
+    app.classList.remove("hidden");
+    app.style.opacity = "0";
+    app.style.display = "block";
+    
     setTimeout(() => {
-      app.classList.remove("hidden");
-      app.style.display = "block";
+      app.style.transition = "opacity 0.5s ease";
+      app.style.opacity = "1";
       state.isAppOpen = true;
       console.log("✅ App shown");
-    }, 150);
+    }, 200);
   }
 }
 
