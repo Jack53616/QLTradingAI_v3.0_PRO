@@ -51,6 +51,11 @@ app.get("/healthz", async (_req, res) => {
   }
 });
 
+// Serve index.html for all non-API routes (SPA support)
+app.get("*", (_req, res) => {
+  res.sendFile(path.join(__dirname, "../public/index.html"));
+});
+
 app.use((err, _req, res, _next) => {
   log("❌ Unhandled error", err);
   res.status(500).json({ ok: false, error: "internal_error" });
