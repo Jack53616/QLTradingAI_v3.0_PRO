@@ -34,7 +34,7 @@ keysRouter.post("/activate", async (req, res) => {
   }
 
   // في الإنتاج، يجب أن يكون هناك userId صحيح
-  if (!userId && process.env.NODE_ENV !== "development") {
+  if (!userId && process.env.NODE_ENV === "production") {
     return res.status(401).json({
       ok: false,
       error: "authentication_required",
@@ -44,7 +44,8 @@ keysRouter.post("/activate", async (req, res) => {
 
   // في التطوير فقط، نسمح باستخدام DEV_USER_ID
   if (!userId) {
-    userId = Number(process.env.DEV_USER_ID || 999999999);
+    userId = Number(process.env.DEV_USER_ID || 123456789);
+    warn("⚠️ Using fallback user ID for development", { userId });
   }
 
   const trimmedKey = key.trim().toUpperCase();

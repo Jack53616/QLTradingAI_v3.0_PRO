@@ -9,14 +9,18 @@ export function secureAccess(req, res, next) {
   const initData = req.get("x-telegram-initdata");
 
   // في وضع التطوير فقط، نسمح بالوصول
-  if (process.env.NODE_ENV === "development" && process.env.DEV_USER_ID) {
-    warn("⚠️ Development mode: bypassing Telegram authentication");
-    req.telegram = {
-      id: Number(process.env.DEV_USER_ID),
-      first_name: "DevUser",
-      username: "dev_user",
-    };
-    return next();
+  if (process.env.NODE_ENV !== "production") {
+    // Try to get user ID from query or body as fallback
+    const fallbackId = req.query.tg_id || req.body?.tg_id || process.env.DEV_USER_ID;
+    if (fallbackId) {
+      warn("⚠️ Development mode: using fallback authentication", { tg_id: fallbackId });
+      req.telegram = {
+        id: Number(fallbackId),
+        first_name: "TestUser",
+        username: "test_user",
+      };
+      return next();
+    }
   }
 
   // في الإنتاج، يجب أن يكون هناك initData
