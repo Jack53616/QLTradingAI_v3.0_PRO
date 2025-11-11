@@ -506,13 +506,26 @@ function startFeed() {
   state.feedTimer = setInterval(once, 20000); // Every 20 seconds
 }
 
-// Balance Ticker (Fake movement when trade is open)
+// Balance Ticker (Fake movement ONLY when trade is open)
 let tickerI = 0;
 function startBalanceTicker() {
   setInterval(() => {
     if (!state.user) return;
     
-    // Simulate balance movement
+    // Check if there are open trades
+    const hasOpenTrades = state.trades && state.trades.some(t => !t.closed_at);
+    
+    if (!hasOpenTrades) {
+      // No open trades - show static balance
+      const ticker = $("#ticker");
+      if (ticker) {
+        ticker.textContent = "+0.00";
+        ticker.style.color = "#9df09d";
+      }
+      return; // Don't move balance
+    }
+    
+    // Simulate balance movement ONLY when trades are open
     const dir = Math.random() > 0.5 ? 1 : -1;
     const step = (Math.random() * 0.8) * dir;
     const cur = Number(String($("#balance")?.textContent || "0").replace(/[^\d.]/g, "")) || 0;
