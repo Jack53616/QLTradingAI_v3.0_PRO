@@ -62,4 +62,7 @@ app.use((err, _req, res, _next) => {
 });
 
 const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => log(`🚀 QL Trading AI running on port ${PORT}`));
+app.listen(PORT, () => {
+  log(`🚀 QL Trading AI v3.0 PRO running on port ${PORT}`);
+  log(`📅 Deployed at: ${new Date().toISOString()}`);
+});
