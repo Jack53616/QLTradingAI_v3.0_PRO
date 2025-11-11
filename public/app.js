@@ -243,6 +243,8 @@ function applyI18n(){
   document.body.dir = (state.lang === "ar") ? "rtl" : "ltr";
 }
 
+// Wait for DOM to be ready
+document.addEventListener('DOMContentLoaded', () => {
 const $ = (q)=>document.querySelector(q);
 const $$ = (q)=>document.querySelectorAll(q);
 
@@ -652,3 +654,5 @@ function notify(msg){
     showGate();
   }
 })();
+
+}); // End DOMContentLoaded
