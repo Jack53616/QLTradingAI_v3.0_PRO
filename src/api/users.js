@@ -1,67 +1,46 @@
-// 📁 routes/users.js
 import express from "express";
 import { pool } from "../utils/db.js";
 import { ensureAdmin } from "../utils/auth.js";
 
 export const usersRouter = express.Router();
 
-/**
- * 🧩 [GET] /api/users
- * إرجاع جميع المستخدمين (لـ admin فقط)
- */
+// 🧩 Get all users (Admin)
 usersRouter.get("/", ensureAdmin, async (_req, res) => {
   try {
-    const result = await pool.query(
+    const { rows } = await pool.query(
       "SELECT id, name, username, level, balance, sub_expires FROM users ORDER BY id DESC"
     );
-    res.json({ ok: true, users: result.rows });
+    res.json({ ok: true, users: rows });
   } catch (err) {
-    console.error("❌ Database error (users list):", err);
     res.status(500).json({ ok: false, error: err.message });
   }
 });
 
-/**
- * 🧠 [GET] /api/users/me
- * يرجع بيانات المستخدم الحالية (سواء من تيليجرام أو وضع التطوير)
- */
+// 🧠 Get current user
 usersRouter.get("/me", async (req, res) => {
   try {
-    // 🔹 تحديد معرف المستخدم
-    const userId = req.telegram?.id || process.env.DEV_USER_ID || 999999;
+    const userId = req.telegram?.id || process.env.DEV_USER_ID || 999999999;
 
-    if (!userId) {
-      return res.status(401).json({ ok: false, error: "no_user" });
-    }
+    if (!userId) return res.status(401).json({ ok: false, error: "no_user" });
 
-    // 🔹 البحث عن المستخدم في قاعدة البيانات
-    const { rows } = await pool.query(
+    let { rows } = await pool.query(
       "SELECT id, name, username, level, balance, sub_expires FROM users WHERE id = $1",
       [userId]
     );
 
-    // 🔹 إذا المستخدم غير موجود
+    // Create fallback user if missing
     if (!rows.length) {
-      // 🧩 في وضع التطوير، ننشئ مستخدم تجريبي تلقائياً
-      if (process.env.NODE_ENV !== "production") {
-        console.warn("⚠️ Dev user not found — creating fallback user...");
-        const insert = await pool.query(
-          `INSERT INTO users (id, name, username, level, balance, sub_expires)
-           VALUES ($1, $2, $3, $4, $5, NOW() + interval '30 days')
-           RETURNING id, name, username, level, balance, sub_expires`,
-          [userId, "DevUser", "dev_user", "Bronze", 0]
-        );
-        return res.json({ ok: true, user: insert.rows[0], dev: true });
-      }
-
-      // 🛑 في الإنتاج: يرجع خطأ بدون إنشاء حساب
-      return res.json({ ok: false, error: "not_found" });
+      const { rows: insert } = await pool.query(
+        `INSERT INTO users (id, name, username, level, balance, sub_expires, created_at)
+         VALUES ($1, $2, $3, $4, $5, NOW() + interval '30 days', NOW())
+         RETURNING id, name, username, level, balance, sub_expires`,
+        [userId, "NewUser", "guest", "Bronze", 0]
+      );
+      rows = insert;
     }
 
-    // ✅ المستخدم موجود
     res.json({ ok: true, user: rows[0] });
   } catch (err) {
-    console.error("❌ Error in /api/users/me:", err);
     res.status(500).json({ ok: false, error: err.message });
   }
 });
