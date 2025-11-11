@@ -324,9 +324,12 @@ function renderUser() {
   
   const { balance = 0, level = "Bronze", subscription_end } = state.user;
   
+  // Convert balance to number (it comes as string from DB)
+  const balanceNum = parseFloat(balance) || 0;
+  
   // Balance
   if ($("#balance")) {
-    $("#balance").textContent = `$${balance.toFixed(2)}`;
+    $("#balance").textContent = `$${balanceNum.toFixed(2)}`;
   }
   
   // Level
@@ -549,7 +552,8 @@ async function handleWithdraw(method) {
   
   if (!state.user) return;
   
-  const amount = prompt(`كم تريد سحب؟ (الرصيد: $${state.user.balance.toFixed(2)})`);
+  const balanceNum = parseFloat(state.user.balance) || 0;
+  const amount = prompt(`كم تريد سحب؟ (الرصيد: $${balanceNum.toFixed(2)})`);
   if (!amount || isNaN(amount) || amount <= 0) return;
   
   const address = prompt(`أدخل عنوان ${method}:`);
