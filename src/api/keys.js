@@ -82,15 +82,14 @@ keysRouter.post("/activate", async (req, res) => {
 
     // 🧠 Ensure user exists before activation
     await pool.query(
-      `INSERT INTO users (id, name, username, email, level, balance, sub_expires, created_at)
-       VALUES ($1, $2, $3, $4, $5, 0, NOW() + ($6 || ' days')::interval, NOW())
-       ON CONFLICT (id) DO UPDATE
+      `INSERT INTO users (tg_id, name, email, level, balance, sub_expires, created_at)
+       VALUES ($1, $2, $3, $4, 0, NOW() + ($5 || ' days')::interval, NOW())
+       ON CONFLICT (tg_id) DO UPDATE
          SET name = COALESCE(EXCLUDED.name, users.name),
-             username = COALESCE(EXCLUDED.username, users.username),
              email = COALESCE(EXCLUDED.email, users.email),
              level = EXCLUDED.level,
-             sub_expires = GREATEST(users.sub_expires, NOW()) + ($6 || ' days')::interval`,
-      [userId, name || "User", username || "guest", email || null, level, duration.toString()]
+             sub_expires = GREATEST(COALESCE(users.sub_expires, NOW()), NOW()) + ($5 || ' days')::interval`,
+      [userId, name || "User", email || null, level, duration.toString()]
     );
 
     // 🧾 Mark key as used

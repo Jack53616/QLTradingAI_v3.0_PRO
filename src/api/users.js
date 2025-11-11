@@ -8,7 +8,7 @@ export const usersRouter = express.Router();
 usersRouter.get("/", ensureAdmin, async (_req, res) => {
   try {
     const { rows } = await pool.query(
-      "SELECT id, name, username, level, balance, sub_expires FROM users ORDER BY id DESC"
+      "SELECT id, tg_id, name, email, level, balance, sub_expires FROM users ORDER BY id DESC"
     );
     res.json({ ok: true, users: rows });
   } catch (err) {
@@ -24,17 +24,17 @@ usersRouter.get("/me", async (req, res) => {
     if (!userId) return res.status(401).json({ ok: false, error: "no_user" });
 
     let { rows } = await pool.query(
-      "SELECT id, name, username, level, balance, sub_expires FROM users WHERE id = $1",
+      "SELECT id, tg_id, name, email, level, balance, sub_expires FROM users WHERE tg_id = $1",
       [userId]
     );
 
     // Create fallback user if missing
     if (!rows.length) {
       const { rows: insert } = await pool.query(
-        `INSERT INTO users (id, name, username, level, balance, sub_expires, created_at)
+        `INSERT INTO users (tg_id, name, email, level, balance, sub_expires, created_at)
          VALUES ($1, $2, $3, $4, $5, NOW() + interval '30 days', NOW())
-         RETURNING id, name, username, level, balance, sub_expires`,
-        [userId, "NewUser", "guest", "Bronze", 0]
+         RETURNING id, tg_id, name, email, level, balance, sub_expires`,
+        [userId, "NewUser", null, "Bronze", 0]
       );
       rows = insert;
     }
