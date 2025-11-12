@@ -30,7 +30,10 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "pg": "^8.11.3",
-    "jsonwebtoken": "^9.0.2"
+    "jsonwebtoken": "^9.0.2",
+    "bcryptjs": "^2.4.3",
+    "ws": "^8.17.0",
+    "node-telegram-bot-api": "^0.61.0"
   },
   "devDependencies": {
     "eslint": "^8.57.0"
