@@ -115,7 +115,8 @@ async function handleMessage(message) {
       "/fakepush — Trigger fake notification\n" +
       "/cleanlogs — Remove admin logs older than 30 days\n" +
       "/audit — Show last admin actions\n" +
-      "/verify <id> — Mark user verified";
+      "/verify <id> — Mark user verified\n" +
+      "/genkey <days> — Generate new activation key";
 
     await sendMessage(chatId, adminHelp, { parse_mode: "Markdown" });
     return;
@@ -179,6 +180,9 @@ async function handleMessage(message) {
       break;
     case "/verify":
       await handleVerify(chatId, text);
+      break;
+    case "/genkey":
+      await handleGenKey(chatId, text);
       break;
     default:
       await sendMessage(chatId, "ℹ️ Unknown command. Use /help for the list of admin commands.");
@@ -609,6 +613,39 @@ async function handleAudit(chatId) {
     .join("\n");
 
   await sendMessage(chatId, `🗂️ *Recent Admin Actions*\n${lines}`, { parse_mode: "Markdown" });
+}
+
+async function handleGenKey(chatId, text) {
+  const args = extractArgs(text);
+  if (args.length < 2) {
+    await sendMessage(chatId, "❌ Usage: /genkey <days>");
+    return;
+  }
+
+  const days = Number(args[1]);
+  if (!Number.isFinite(days) || days <= 0) {
+    await sendMessage(chatId, "❌ Days must be a positive number.");
+    return;
+  }
+
+  // Generate random key (16 characters)
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let key = '';
+  for (let i = 0; i < 16; i++) {
+    key += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  
+  // Format as XXXX-XXXX-XXXX-XXXX
+  const formattedKey = key.match(/.{1,4}/g).join('-');
+
+  await logAdminAction(chatId, null, "generate_key", { key: formattedKey, days });
+  
+  const message = `🔑 *New Activation Key Generated*\n\n` +
+    `Key: \`${formattedKey}\`\n` +
+    `Duration: ${days} days\n\n` +
+    `⚠️ This key is not stored in database. Save it now!`;
+  
+  await sendMessage(chatId, message, { parse_mode: "Markdown" });
 }
 
 async function handleVerify(chatId, text) {
