@@ -354,7 +354,7 @@ async function getToken() {
 async function activateKey(key, name, email) {
   console.log('[API] Activating key...');
   
-  const result = await apiCall('/api/activate', {
+  const result = await apiCall('/api/auth/activate', {
     method: 'POST',
     body: {
       key: key,
