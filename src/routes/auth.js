@@ -127,11 +127,26 @@ authRouter.post("/activate", async (req, res, next) => {
       return res.status(409).json({ success: false, message: "user_already_exists" });
     }
 
-    // For now, accept any valid-format key and give 30 days
-    // In production, you'd validate against a keys table
-    const subscriptionDays = 30;
+    // Validate key against keys table
+    const keyResult = await pool.query(
+      "SELECT * FROM keys WHERE key = $1 AND used = FALSE",
+      [key]
+    );
+
+    if (!keyResult.rows.length) {
+      return res.status(400).json({ success: false, message: "invalid_key" });
+    }
+
+    const keyData = keyResult.rows[0];
+    const subscriptionDays = keyData.days;
     const subscriptionExpires = new Date();
     subscriptionExpires.setDate(subscriptionExpires.getDate() + subscriptionDays);
+
+    // Mark key as used
+    await pool.query(
+      "UPDATE keys SET used = TRUE, used_at = NOW(), used_by = $1 WHERE id = $2",
+      [email, keyData.id]
+    );
 
     // Generate temporary password
     const tempPassword = Math.random().toString(36).slice(-8);

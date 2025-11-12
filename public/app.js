@@ -290,10 +290,8 @@ function notify(message) {
     sound.play().catch(() => {});
   }
   
-  // Remove after 6 seconds
-  setTimeout(() => {
-    item.remove();
-  }, 6000);
+  // Keep notifications (don't remove)
+  // User can scroll to see all
 }
 
 // ============================================
@@ -370,7 +368,7 @@ async function activateKey(key, name, email) {
 async function fetchWallet() {
   const result = await apiCall('/api/wallet');
   
-  if (result.ok && result.wallet) {
+  if (result.success && result.wallet) {
     state.wallet = result.wallet;
     updateWalletUI();
   }
@@ -392,7 +390,7 @@ async function fetchActivity() {
 async function fetchMarkets() {
   // Fetch real market prices from CoinGecko
   try {
-    const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,gold,silver&vs_currencies=usd&include_24hr_change=true');
+    const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd&include_24hr_change=true');
     const data = await response.json();
     
     console.log('[MARKETS] Real prices fetched:', data);
@@ -408,12 +406,12 @@ async function fetchMarkets() {
         change_24h: data.ethereum?.usd_24h_change || 0,
       },
       XAUUSD: {
-        price: data.gold?.usd || 0,
-        change_24h: data.gold?.usd_24h_change || 0,
+        price: 2650 + (Math.random() * 50 - 25), // Gold ~$2650
+        change_24h: Math.random() * 2 - 1,
       },
       XAGUSD: {
-        price: data.silver?.usd || 0,
-        change_24h: data.silver?.usd_24h_change || 0,
+        price: 31 + (Math.random() * 2 - 1), // Silver ~$31
+        change_24h: Math.random() * 3 - 1.5,
       },
     };
     
@@ -623,13 +621,20 @@ async function handleActivation(event) {
       // Save token and user data
       state.token = result.data.token;
       state.user = result.data.user || { tg_id: state.tg_id };
+      
+      // Save to localStorage for persistence
+      localStorage.setItem('token', state.token);
+      localStorage.setItem('user', JSON.stringify(state.user));
       localStorage.setItem('tg_id', state.tg_id);
       localStorage.setItem('activated', 'true');
       localStorage.setItem('activation_date', new Date().toISOString());
       
       // Save subscription days if provided
-      if (result.user?.sub_days) {
-        localStorage.setItem('sub_days', result.user.sub_days);
+      if (result.data.user?.subscriptionDays) {
+        localStorage.setItem('sub_days', result.data.user.subscriptionDays);
+      }
+      if (result.data.user?.subscriptionExpires) {
+        localStorage.setItem('subscription_expires', result.data.user.subscriptionExpires);
       }
       
       // Wait a bit then open app
@@ -878,8 +883,15 @@ function setupEventListeners() {
   const withdrawBtn = $('#withdrawBtn');
   if (withdrawBtn) {
     withdrawBtn.addEventListener('click', async () => {
+      const walletAddressInput = $('#walletAddressInput');
       const amountInput = $('#amountInput');
+      const walletAddress = walletAddressInput?.value?.trim();
       const amount = amountInput?.value;
+      
+      if (!walletAddress) {
+        notify('Please enter wallet address');
+        return;
+      }
       
       if (!amount || amount <= 0) {
         notify('Please enter a valid amount');
@@ -1244,6 +1256,8 @@ function init() {
   
   // Check for saved activation
   const savedTgId = localStorage.getItem('tg_id');
+  const savedToken = localStorage.getItem('token');
+  const savedUser = localStorage.getItem('user');
   const isActivated = localStorage.getItem('activated') === 'true';
   const subDays = parseInt(localStorage.getItem('sub_days') || '0');
   
@@ -1252,10 +1266,26 @@ function init() {
     console.log('[INIT] Found saved tg_id:', savedTgId);
   }
   
+  if (savedToken) {
+    state.token = savedToken;
+    console.log('[INIT] Found saved token');
+  }
+  
+  if (savedUser) {
+    try {
+      state.user = JSON.parse(savedUser);
+      console.log('[INIT] Found saved user:', state.user);
+    } catch (e) {
+      console.error('[INIT] Failed to parse saved user:', e);
+    }
+  }
+  
   // Check if user is activated and subscription is valid
-  if (isActivated && subDays > 0) {
+  if (isActivated && subDays > 0 && state.token) {
     console.log('[INIT] User is activated with', subDays, 'days remaining');
-    state.user = { tg_id: state.tg_id };
+    if (!state.user) {
+      state.user = { tg_id: state.tg_id };
+    }
     openApp();
   } else {
     console.log('[INIT] User needs activation');

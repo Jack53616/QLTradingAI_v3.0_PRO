@@ -263,7 +263,8 @@
           <div id="methodInfo" class="method-info"></div>
           
           <div class="withdraw-form">
-            <input type="number" id="amountInput" class="input-field" placeholder="Amount">
+            <input type="text" id="walletAddressInput" class="input-field" placeholder="Wallet Address" required>
+            <input type="number" id="amountInput" class="input-field" placeholder="Amount" required>
             <button id="withdrawBtn" class="btn btn-primary" data-i18n="request">Request</button>
           </div>
           
@@ -386,7 +387,7 @@
   <audio id="notifySound" src="./notify.mp3" preload="auto"></audio>
 
   <!-- App Script -->
-  <script src="./app.js?v=3"></script>
+  <script src="./app.js?v=4"></script>
   
 </body>
 </html>
