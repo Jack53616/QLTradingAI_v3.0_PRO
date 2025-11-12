@@ -89,7 +89,7 @@
       <div class="header-top">
         <h1 class="app-brand">QL Wallet</h1>
         <div class="header-actions">
-          <button id="musicBtn" class="icon-btn" title="Music">🎵</button>
+          <button id="settingsBtn" class="icon-btn" title="Settings">⚙️</button>
           <button id="langBtn" class="icon-btn" title="Language">🌐</button>
         </div>
       </div>
@@ -271,17 +271,18 @@
           
           <div class="card glass" style="margin-top: 16px;">
             <h3 class="card-title" data-i18n="deposit">Deposit</h3>
-            <p class="note" style="margin-bottom: 12px;">Add funds to your wallet</p>
-            
-            <div class="deposit-form">
-              <input type="number" id="depositAmount" class="input-field" placeholder="Amount (USD)" min="10">
-              <button id="depositBtn" class="btn btn-primary">Add Funds</button>
+            <div class="info-box warning">
+              <p>💬 To add funds, please contact support:</p>
             </div>
             
-            <p class="note" style="margin-top: 12px;">Or contact support:</p>
-            <a href="https://wa.me/message/P6BBPSDL2CC4D1" target="_blank" class="btn btn-secondary">
-              WhatsApp
-            </a>
+            <div class="support-buttons">
+              <a href="https://wa.me/message/P6BBPSDL2CC4D1" target="_blank" class="btn btn-primary">
+                📞 WhatsApp Support
+              </a>
+              <a href="https://t.me/qlsupport" target="_blank" class="btn btn-secondary">
+                ✉️ Telegram: @qlsupport
+              </a>
+            </div>
           </div>
         </div>
       </section>
@@ -312,6 +313,62 @@
     </main>
   </div>
 
+  <!-- Settings Drawer -->
+  <div id="settingsDrawer" class="settings-drawer">
+    <div class="drawer-header">
+      <h3 class="drawer-title">Settings</h3>
+      <button id="closeSettingsBtn" class="icon-btn">✖️</button>
+    </div>
+    
+    <div class="drawer-content">
+      <div class="settings-section">
+        <h4 class="settings-subtitle">Broker Connection</h4>
+        
+        <div class="broker-card">
+          <div class="broker-logo">XM</div>
+          <div class="broker-info">
+            <p class="broker-name">XM Trading</p>
+            <p class="broker-status connected">Connected</p>
+          </div>
+        </div>
+        
+        <div class="settings-item">
+          <span class="settings-label">Account Name</span>
+          <span class="settings-value" id="accountName">John Doe</span>
+        </div>
+        
+        <div class="settings-item">
+          <span class="settings-label">Email</span>
+          <span class="settings-value" id="accountEmail">john@example.com</span>
+        </div>
+        
+        <div class="settings-item">
+          <span class="settings-label">Account Type</span>
+          <span class="settings-value" id="accountType">Standard</span>
+        </div>
+        
+        <div class="settings-item">
+          <span class="settings-label">Connection Status</span>
+          <span class="settings-value success" id="connectionStatus">Active</span>
+        </div>
+        
+        <button class="btn btn-secondary" id="disconnectBrokerBtn">Disconnect Broker</button>
+        <a href="https://www.xm.com/" target="_blank" class="btn btn-primary">Open XM Dashboard</a>
+      </div>
+      
+      <div class="settings-section">
+        <h4 class="settings-subtitle">Telegram Info</h4>
+        
+        <div class="settings-item">
+          <span class="settings-label">Telegram ID</span>
+          <span class="settings-value" id="telegramId">Loading...</span>
+        </div>
+        
+        <a href="https://t.me/QL_Support" target="_blank" class="btn btn-secondary">Open in Telegram</a>
+      </div>
+    </div>
+  </div>
+  
   <!-- Withdraw Method Sheet -->
   <div id="methodSheet" class="bottom-sheet">
     <div class="sheet-handle"></div>

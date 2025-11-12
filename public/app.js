@@ -811,12 +811,36 @@ function setupEventListeners() {
     });
   }
   
-  // Music button
-  const musicBtn = $('#musicBtn');
-  if (musicBtn) {
-    musicBtn.addEventListener('click', () => {
-      console.log('[MUSIC] Toggle music');
-      // TODO: Implement music toggle
+  // Settings button
+  const settingsBtn = $('#settingsBtn');
+  const settingsDrawer = $('#settingsDrawer');
+  if (settingsBtn && settingsDrawer) {
+    settingsBtn.addEventListener('click', () => {
+      settingsDrawer.classList.add('active');
+      
+      // Update Telegram ID
+      const telegramIdEl = $('#telegramId');
+      if (telegramIdEl && state.tg_id) {
+        telegramIdEl.textContent = state.tg_id;
+      }
+    });
+  }
+  
+  // Close settings button
+  const closeSettingsBtn = $('#closeSettingsBtn');
+  if (closeSettingsBtn && settingsDrawer) {
+    closeSettingsBtn.addEventListener('click', () => {
+      settingsDrawer.classList.remove('active');
+    });
+  }
+  
+  // Disconnect broker button
+  const disconnectBrokerBtn = $('#disconnectBrokerBtn');
+  if (disconnectBrokerBtn) {
+    disconnectBrokerBtn.addEventListener('click', () => {
+      if (confirm('Are you sure you want to disconnect from XM Trading?')) {
+        notify('⚠️ Broker disconnected');
+      }
     });
   }
   
@@ -929,19 +953,37 @@ function setupEventListeners() {
       
       if (!amount || amount <= 0) return;
       
+      const amountNum = parseFloat(amount);
+      
       // Check balance
-      if (!state.wallet || state.wallet.balance < parseFloat(amount)) {
-        notify('Insufficient balance');
+      if (!state.wallet || state.wallet.balance < amountNum) {
+        notify('⚠️ Insufficient balance');
         return;
       }
+      
+      // Ask for TP/SL
+      const tp = prompt('Take Profit (USD):', '10');
+      const sl = prompt('Stop Loss (USD):', '5');
+      
+      if (!tp || !sl) {
+        notify('⚠️ TP/SL required');
+        return;
+      }
+      
+      const tpNum = parseFloat(tp);
+      const slNum = parseFloat(sl);
       
       // Create trade
       const trade = {
         id: Date.now(),
         symbol: symbol,
         type: type,
-        amount: parseFloat(amount),
-        price: price,
+        amount: amountNum,
+        entry_price: price,
+        current_price: price,
+        tp: tpNum,
+        sl: slNum,
+        pnl: 0,
         time: new Date().toISOString(),
         status: 'open',
       };
@@ -951,10 +993,14 @@ function setupEventListeners() {
       state.trades.push(trade);
       
       // Deduct from balance
-      state.wallet.balance -= parseFloat(amount);
+      state.wallet.balance -= amountNum;
       updateWalletUI();
+      updateTradesUI();
       
       notify(`✅ ${type.toUpperCase()} order placed for ${symbol}`);
+      
+      // Start monitoring trade
+      monitorTrade(trade);
       
       console.log('[TRADE] Order placed:', trade);
     });
@@ -974,6 +1020,121 @@ function setupEventListeners() {
   
   console.log('[EVENTS] All event listeners attached');
 }
+
+// ============================================
+// TRADE MONITORING & TP/SL
+// ============================================
+
+function updateTradesUI() {
+  const tradesList = $('#tradesList');
+  if (!tradesList) return;
+  
+  if (!state.trades || state.trades.length === 0) {
+    tradesList.innerHTML = '<div class="empty-state">No trades yet</div>';
+    return;
+  }
+  
+  const openTrades = state.trades.filter(t => t.status === 'open');
+  
+  if (openTrades.length === 0) {
+    tradesList.innerHTML = '<div class="empty-state">No open trades</div>';
+    return;
+  }
+  
+  tradesList.innerHTML = openTrades.map(trade => {
+    const pnlClass = trade.pnl >= 0 ? 'success' : 'danger';
+    const pnlSign = trade.pnl >= 0 ? '+' : '';
+    
+    return `
+      <div class="trade-item">
+        <div class="trade-header">
+          <span class="trade-symbol">${trade.symbol}</span>
+          <span class="trade-type ${trade.type}">${trade.type.toUpperCase()}</span>
+        </div>
+        <div class="trade-details">
+          <div>Amount: $${trade.amount.toFixed(2)}</div>
+          <div>Entry: ${trade.entry_price.toFixed(2)}</div>
+          <div>Current: ${trade.current_price.toFixed(2)}</div>
+          <div class="${pnlClass}">PNL: ${pnlSign}$${trade.pnl.toFixed(2)}</div>
+        </div>
+        <div class="trade-tpsl">
+          <span>TP: $${trade.tp}</span>
+          <span>SL: $${trade.sl}</span>
+        </div>
+        <button class="btn btn-danger" onclick="closeTrade(${trade.id})">Close Trade</button>
+      </div>
+    `;
+  }).join('');
+}
+
+function monitorTrade(trade) {
+  console.log('[TRADE] Monitoring trade:', trade.id);
+  
+  // Update trade PNL every 2 seconds
+  const interval = setInterval(() => {
+    if (trade.status !== 'open') {
+      clearInterval(interval);
+      return;
+    }
+    
+    // Get current market price
+    const marketData = state.markets[trade.symbol];
+    if (!marketData || !marketData.price) return;
+    
+    trade.current_price = marketData.price;
+    
+    // Calculate PNL
+    const priceDiff = trade.type === 'buy' 
+      ? trade.current_price - trade.entry_price
+      : trade.entry_price - trade.current_price;
+    
+    trade.pnl = (priceDiff / trade.entry_price) * trade.amount;
+    
+    // Update balance in real-time
+    if (state.wallet) {
+      // This is just visual, actual balance updated on close
+      updateWalletUI();
+    }
+    
+    // Check TP/SL
+    if (trade.pnl >= trade.tp) {
+      console.log('[TRADE] TP reached for trade:', trade.id);
+      closeTrade(trade.id, 'TP reached');
+      clearInterval(interval);
+    } else if (trade.pnl <= -trade.sl) {
+      console.log('[TRADE] SL reached for trade:', trade.id);
+      closeTrade(trade.id, 'SL reached');
+      clearInterval(interval);
+    }
+    
+    // Update UI
+    updateTradesUI();
+  }, 2000);
+}
+
+function closeTrade(tradeId, reason = 'Manual close') {
+  const trade = state.trades?.find(t => t.id === tradeId);
+  if (!trade || trade.status !== 'open') return;
+  
+  console.log('[TRADE] Closing trade:', tradeId, reason);
+  
+  trade.status = 'closed';
+  trade.close_reason = reason;
+  trade.close_time = new Date().toISOString();
+  
+  // Return amount + PNL to balance
+  if (state.wallet) {
+    state.wallet.balance += trade.amount + trade.pnl;
+    updateWalletUI();
+  }
+  
+  updateTradesUI();
+  
+  notify(`✅ Trade closed: ${reason}`);
+}
+
+// Make closeTrade global for onclick
+window.closeTrade = closeTrade;
 
 // ============================================
 // INTERNATIONALIZATION
