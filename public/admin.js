@@ -125,16 +125,25 @@ async function apiCall(endpoint, options = {}) {
 }
 
 async function loginAdmin(password, twoFACode = null) {
-  // For now, simple password check
-  // In production, this should call backend API
-  if (password === ADMIN_CONFIG.DEFAULT_PASSWORD) {
-    adminState.isLoggedIn = true;
-    adminState.token = 'admin_token_' + Date.now();
-    localStorage.setItem('admin_token', adminState.token);
-    return { ok: true };
+  try {
+    const result = await apiCall('/admin/login', {
+      method: 'POST',
+      body: JSON.stringify({ password, twoFACode }),
+    });
+    
+    if (result.ok && result.data?.token) {
+      adminState.isLoggedIn = true;
+      adminState.token = result.data.token;
+      localStorage.setItem('admin_token', adminState.token);
+      console.log('[LOGIN] Token saved:', adminState.token);
+      return { ok: true };
+    }
+    
+    return { ok: false, error: result.error || 'Invalid credentials' };
+  } catch (error) {
+    console.error('[LOGIN] Error:', error);
+    return { ok: false, error: error.message || 'Login failed' };
   }
-  
-  return { ok: false, error: 'Invalid password' };
 }
 
 async function fetchUsers() {
@@ -142,12 +151,14 @@ async function fetchUsers() {
   
   if (result.ok && result.data.users) {
     adminState.users = result.data.users;
+    console.log('[FETCH] Loaded', adminState.users.length, 'real users');
     return { ok: true, users: result.data.users };
   }
   
-  // Fallback to mock data
-  adminState.users = generateMockUsers();
-  return { ok: true, users: adminState.users };
+  // If API fails, show empty state instead of fake data
+  console.warn('[FETCH] Failed to load users:', result.error);
+  adminState.users = [];
+  return { ok: false, error: result.error || 'Failed to load users' };
 }
 
 async function fetchTrades() {
@@ -155,43 +166,39 @@ async function fetchTrades() {
   
   if (result.ok && result.data.trades) {
     adminState.trades = result.data.trades;
+    console.log('[FETCH] Loaded', adminState.trades.length, 'real trades');
     return { ok: true, trades: result.data.trades };
   }
   
-  // Fallback to mock data
-  adminState.trades = generateMockTrades();
-  return { ok: true, trades: adminState.trades };
+  console.warn('[FETCH] Failed to load trades:', result.error);
+  adminState.trades = [];
+  return { ok: false, error: result.error || 'Failed to load trades' };
 }
 
 async function fetchTransactions() {
-  const result = await apiCall('/admin/transactions');
+  const result = await apiCall('/admin/withdrawals');
   
-  if (result.ok && result.data.transactions) {
-    adminState.transactions = result.data.transactions;
-    return { ok: true, transactions: result.data.transactions };
+  if (result.ok && result.data.withdrawals) {
+    adminState.transactions = result.data.withdrawals;
+    console.log('[FETCH] Loaded', adminState.transactions.length, 'real withdrawals');
+    return { ok: true, transactions: result.data.withdrawals };
   }
   
-  // Fallback to mock data
-  adminState.transactions = generateMockTransactions();
-  return { ok: true, transactions: adminState.transactions };
+  console.warn('[FETCH] Failed to load withdrawals:', result.error);
+  adminState.transactions = [];
+  return { ok: false, error: result.error || 'Failed to load withdrawals' };
 }
 
 async function fetchStats() {
-  const result = await apiCall('/admin/stats');
-  
-  if (result.ok && result.data) {
-    adminState.stats = result.data;
-    return { ok: true, stats: result.data };
-  }
-  
-  // Calculate from mock data
+  // Calculate stats from loaded data
   adminState.stats = {
     totalUsers: adminState.users.length,
     activeSubs: adminState.users.filter(u => u.sub_days > 0).length,
     openTrades: adminState.trades.filter(t => t.status === 'open').length,
-    totalBalance: adminState.users.reduce((sum, u) => sum + (u.balance || 0), 0),
+    totalBalance: adminState.users.reduce((sum, u) => sum + (Number(u.balance) || 0), 0),
   };
   
+  console.log('[FETCH] Calculated stats:', adminState.stats);
   return { ok: true, stats: adminState.stats };
 }
 
