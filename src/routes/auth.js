@@ -103,4 +103,62 @@ authRouter.post("/login", async (req, res, next) => {
   }
 });
 
+authRouter.post("/activate", async (req, res, next) => {
+  try {
+    const { name, email, key, telegramId } = req.body || {};
+
+    if (!name || !email || !key) {
+      return res.status(400).json({ success: false, message: "missing_fields" });
+    }
+
+    // Validate key format (XXXX-XXXX-XXXX-XXXX)
+    const keyPattern = /^[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}$/;
+    if (!keyPattern.test(key)) {
+      return res.status(400).json({ success: false, message: "invalid_key_format" });
+    }
+
+    // Check if user already exists
+    const existing = await pool.query(
+      "SELECT id FROM users WHERE email = $1 OR (tg_id IS NOT NULL AND tg_id = $2)",
+      [email, telegramId || null]
+    );
+    
+    if (existing.rows.length) {
+      return res.status(409).json({ success: false, message: "user_already_exists" });
+    }
+
+    // For now, accept any valid-format key and give 30 days
+    // In production, you'd validate against a keys table
+    const subscriptionDays = 30;
+    const subscriptionExpires = new Date();
+    subscriptionExpires.setDate(subscriptionExpires.getDate() + subscriptionDays);
+
+    // Generate temporary password
+    const tempPassword = Math.random().toString(36).slice(-8);
+    const passwordHash = await hashPassword(tempPassword);
+
+    // Create user
+    const insert = await pool.query(
+      `INSERT INTO users (tg_id, email, password_hash, name, lang, role, status, verified, sub_days, subscription_expires)
+       VALUES ($1, $2, $3, $4, 'en', 'user', 'active', TRUE, $5, $6)
+       RETURNING *`,
+      [telegramId || null, email, passwordHash, name, subscriptionDays, subscriptionExpires]
+    );
+
+    const user = normalizeUser(insert.rows[0]);
+    const token = signToken({ id: user.id, role: user.role, email: user.email });
+
+    res.status(201).json({ 
+      success: true, 
+      data: { 
+        token, 
+        user,
+        tempPassword // Send temp password so user can login later
+      } 
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 export default authRouter;
