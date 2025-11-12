@@ -10,10 +10,14 @@ import tradesRouter from "./routes/trades.js";
 import marketsRouter from "./routes/markets.js";
 import activityRouter from "./routes/activity.js";
 import adminRouter from "./routes/admin.js";
+import walletRouter from "./routes/wallet.js";
+import tokenRouter from "./routes/token.js";
+import requestsRouter from "./routes/requests.js";
 import { authenticate } from "./middleware/authenticate.js";
 import { notFoundHandler, errorHandler } from "./middleware/error-handler.js";
 import { rateLimiter } from "./middleware/rate-limit.js";
 import { startTelegramBot } from "./bot/index.js";
+import { runMigrations } from "./utils/migrate.js";
 
 dotenv.config();
 
@@ -50,6 +54,9 @@ app.use("/api/trades", authenticate, tradesRouter);
 app.use("/api/activity", activityRouter);
 app.use("/api/markets", marketsRouter);
 app.use("/api/admin", adminRouter);
+app.use("/api/wallet", authenticate, walletRouter);
+app.use("/api/token", tokenRouter);
+app.use("/api/requests", authenticate, requestsRouter);
 
 // Telegram webhook endpoint
 app.post("/webhook/:token", async (req, res) => {
@@ -74,9 +81,20 @@ app.use(notFoundHandler);
 app.use(errorHandler);
 
 const PORT = config.PORT || 4000;
-app.listen(PORT, () => {
-  console.log(JSON.stringify({ level: "info", message: "server_started", port: PORT }));
-});
+
+// Run migrations before starting server
+runMigrations()
+  .then(() => {
+    console.log(JSON.stringify({ level: "info", message: "migrations_completed" }));
+    
+    app.listen(PORT, () => {
+      console.log(JSON.stringify({ level: "info", message: "server_started", port: PORT }));
+    });
+  })
+  .catch((err) => {
+    console.error(JSON.stringify({ level: "error", message: "migrations_failed", error: err?.message }));
+    process.exit(1);
+  });
 
 startTelegramBot().catch((err) => {
   console.error(

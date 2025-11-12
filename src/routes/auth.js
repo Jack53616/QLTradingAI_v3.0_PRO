@@ -129,7 +129,7 @@ authRouter.post("/activate", async (req, res, next) => {
 
     // Validate key against keys table
     const keyResult = await pool.query(
-      "SELECT * FROM keys WHERE key = $1 AND used = FALSE",
+      "SELECT * FROM keys WHERE key_code = $1 AND used = FALSE",
       [key]
     );
 

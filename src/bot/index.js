@@ -640,14 +640,26 @@ async function handleGenKey(chatId, text) {
   // Format as XXXX-XXXX-XXXX-XXXX
   const formattedKey = key.match(/.{1,4}/g).join('-');
 
-  await logAdminAction(chatId, null, "generate_key", { key: formattedKey, days });
-  
-  const message = `🔑 *New Activation Key Generated*\n\n` +
-    `Key: \`${formattedKey}\`\n` +
-    `Duration: ${days} days\n\n` +
-    `⚠️ This key is not stored in database. Save it now!`;
-  
-  await sendMessage(chatId, message, { parse_mode: "Markdown" });
+  // Save key to database
+  try {
+    await pool.query(
+      `INSERT INTO keys (key_code, days, created_by)
+       VALUES ($1, $2, $3)`,
+      [formattedKey, days, chatId]
+    );
+    
+    await logAdminAction(chatId, null, "generate_key", { key: formattedKey, days });
+    
+    const message = `🔑 *New Activation Key Generated*\n\n` +
+      `Key: \`${formattedKey}\`\n` +
+      `Duration: ${days} days\n\n` +
+      `✅ Key saved to database and ready to use!`;
+    
+    await sendMessage(chatId, message, { parse_mode: "Markdown" });
+  } catch (error) {
+    console.error('[GENKEY] Error saving key:', error);
+    await sendMessage(chatId, `❌ Failed to generate key: ${error.message}`);
+  }
 }
 
 async function handleVerify(chatId, text) {
