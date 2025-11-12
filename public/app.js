@@ -616,12 +616,13 @@ async function handleActivation(event) {
   try {
     const result = await activateKey(key, name, email);
     
-    if (result.ok) {
+    if (result.success && result.data) {
       console.log('[ACTIVATION] Success!');
       showToast('Activation successful!', 'success');
       
-      // Save user data and activation status
-      state.user = result.user || { tg_id: state.tg_id };
+      // Save token and user data
+      state.token = result.data.token;
+      state.user = result.data.user || { tg_id: state.tg_id };
       localStorage.setItem('tg_id', state.tg_id);
       localStorage.setItem('activated', 'true');
       localStorage.setItem('activation_date', new Date().toISOString());
@@ -637,8 +638,8 @@ async function handleActivation(event) {
       }, 1000);
       
     } else {
-      console.error('[ACTIVATION] Failed:', result.error);
-      showToast(result.error || 'Activation failed');
+      console.error('[ACTIVATION] Failed:', result.message || result.error);
+      showToast(result.message || result.error || 'Activation failed');
     }
     
   } catch (error) {

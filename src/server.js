@@ -39,6 +39,11 @@ app.get("/health", async (_req, res) => {
   }
 });
 
+// Serve admin panel
+app.get("/admin", (_req, res) => {
+  res.sendFile("admin.html", { root: "public" });
+});
+
 app.use("/api/auth", authRouter);
 app.use("/api/user", authenticate, userRouter);
 app.use("/api/trades", authenticate, tradesRouter);
