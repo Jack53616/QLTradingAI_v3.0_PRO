@@ -30,7 +30,16 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "pg": "^8.11.3",
-    "jsonwebtoken": "^9.0.2"
+    "jsonwebtoken": "^9.0.2",
+    "bcryptjs": "^2.4.3",
+    "ws": "^8.17.0",
+    "node-telegram-bot-api": "^0.61.0",
+    "array.prototype.findindex": "^2.2.3",
+    "bl": "^5.1.0",
+    "eventemitter3": "^5.0.1",
+    "file-type": "^18.7.0",
+    "request": "^2.88.2",
+    "request-promise": "^4.2.6"
   },
   "devDependencies": {
     "eslint": "^8.57.0"
