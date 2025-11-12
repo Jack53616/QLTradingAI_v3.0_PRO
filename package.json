@@ -35,6 +35,8 @@
     "eventemitter3": "^5.0.1",
      "file-type": "^18.7.0",
     "jsonwebtoken": "^9.0.2",
+      "request": "^2.88.2",
+  "request-promise": "^4.2.6,
     "bcryptjs": "^2.4.3",
     "ws": "^8.17.0",
     "node-telegram-bot-api": "^0.61.0"
