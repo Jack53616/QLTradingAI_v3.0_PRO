@@ -1,74 +1,62 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import path from "path";
-import { fileURLToPath } from "url";
 
-import { secureAccess } from "./middleware/secure.js";
-import { usersRouter } from "./api/users.js";
-import { keysRouter } from "./api/keys.js";
-import { tradesRouter } from "./api/trades.js";
-import { withdrawRouter } from "./api/withdraw.js";
-import { adminRouter } from "./api/admin.js";
-import { marketsRouter } from "./api/markets.js";
-import { authRouter } from "./api/auth.js";
-import { activityRouter } from "./api/activity.js";
-import { bot } from "./bot/index.js";
-import { log } from "./utils/logger.js";
+import { config } from "./config/env.js";
 import { pool } from "./utils/db.js";
+import authRouter from "./routes/auth.js";
+import userRouter from "./routes/user.js";
+import tradesRouter from "./routes/trades.js";
+import marketsRouter from "./routes/markets.js";
+import activityRouter from "./routes/activity.js";
+import adminRouter from "./routes/admin.js";
+import { authenticate } from "./middleware/authenticate.js";
+import { notFoundHandler, errorHandler } from "./middleware/error-handler.js";
+import { rateLimiter } from "./middleware/rate-limit.js";
+import { startTelegramBot } from "./bot/index.js";
 
 dotenv.config();
 
 const app = express();
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// CORS configuration
-const corsOptions = {
-  origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-telegram-initdata']
-};
-app.use(cors(corsOptions));
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS?.split(",") || "*",
+  credentials: true
+}));
 app.use(express.json({ limit: "1mb" }));
-app.use(express.urlencoded({ extended: true }));
 
-// API routes (MUST come before static files)
-app.use("/webhook", bot);
-app.use("/api/keys", keysRouter);
-app.use("/api/users", secureAccess, usersRouter);
-app.use("/api/trades", secureAccess, tradesRouter);
-app.use("/api/withdraw", secureAccess, withdrawRouter);
-app.use("/api/admin", adminRouter);
-app.use("/api/markets", marketsRouter);
-app.use("/api", authRouter);
-app.use("/api", activityRouter);
+app.use(rateLimiter({ windowMs: 15 * 60 * 1000, limit: 200 }));
 
-// Static files (after API routes)
-app.use(express.static(path.join(__dirname, "../public")));
-
-app.get("/healthz", async (_req, res) => {
+app.get("/health", async (_req, res) => {
   try {
-    await pool.query('SELECT 1');
-    res.json({ ok: true, database: "connected", timestamp: new Date().toISOString() });
-  } catch (err) {
-    log("❌ Health check failed:", err);
-    res.status(503).json({ ok: false, database: "disconnected", error: "database_unavailable" });
+    await pool.query("SELECT 1");
+    res.json({ success: true, message: "ok" });
+  } catch (error) {
+    res.status(503).json({ success: false, message: "database_unreachable" });
   }
 });
 
-// Serve index.html for all non-API routes (SPA support)
-app.get("*", (_req, res) => {
-  res.sendFile(path.join(__dirname, "../public/index.html"));
-});
+app.use("/api/auth", authRouter);
+app.use("/api/user", authenticate, userRouter);
+app.use("/api/trades", authenticate, tradesRouter);
+app.use("/api/activity", activityRouter);
+app.use("/api/markets", marketsRouter);
+app.use("/api/admin", adminRouter);
 
-app.use((err, _req, res, _next) => {
-  log("❌ Unhandled error", err);
-  res.status(500).json({ ok: false, error: "internal_error" });
-});
+app.use(notFoundHandler);
+app.use(errorHandler);
 
-const PORT = process.env.PORT || 10000;
+const PORT = config.PORT || 4000;
 app.listen(PORT, () => {
-  log(`🚀 QL Trading AI v3.0 PRO running on port ${PORT}`);
-  log(`📅 Deployed at: ${new Date().toISOString()}`);
+  console.log(JSON.stringify({ level: "info", message: "server_started", port: PORT }));
+});
+
+startTelegramBot().catch((err) => {
+  console.error(
+    JSON.stringify({
+      level: "error",
+      message: "telegram_bot_start_failed",
+      error: err?.message || String(err)
+    })
+  );
 });
