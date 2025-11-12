@@ -27,6 +27,9 @@ app.use(express.json({ limit: "1mb" }));
 
 app.use(rateLimiter({ windowMs: 15 * 60 * 1000, limit: 200 }));
 
+// Serve static files from public directory
+app.use(express.static("public"));
+
 app.get("/health", async (_req, res) => {
   try {
     await pool.query("SELECT 1");

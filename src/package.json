@@ -2,45 +2,23 @@
   "name": "qltradingai",
   "version": "3.0.0",
   "description": "Smart & Secure Trading AI Platform with Telegram Integration",
-  "main": "src/server.js",
+  "main": "server.js",
   "type": "module",
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=18.0.0"
   },
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "node --watch src/server.js",
-    "db:init": "psql $DATABASE_URL -f db.sql",
-    "lint": "eslint src/",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js",
+    "dev": "node --watch server.js"
   },
-  "keywords": [
-    "trading",
-    "ai",
-    "telegram",
-    "bot",
-    "crypto",
-    "subscription"
-  ],
-  "author": "QL Trading AI Team",
-  "license": "PROPRIETARY",
   "dependencies": {
     "express": "^4.19.2",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
-     "bl": "^5.1.0",
     "pg": "^8.11.3",
-     "array.prototype.findindex": "^2.2.3",
-    "eventemitter3": "^5.0.1",
-     "file-type": "^18.7.0",
     "jsonwebtoken": "^9.0.2",
-      "request": "^2.88.2",
-  "request-promise": "^4.2.6,
     "bcryptjs": "^2.4.3",
     "ws": "^8.17.0",
     "node-telegram-bot-api": "^0.61.0"
-  },
-  "devDependencies": {
-    "eslint": "^8.57.0"
   }
 }
