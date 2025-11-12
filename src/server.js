@@ -46,6 +46,25 @@ app.use("/api/activity", activityRouter);
 app.use("/api/markets", marketsRouter);
 app.use("/api/admin", adminRouter);
 
+// Telegram webhook endpoint
+app.post("/webhook/:token", async (req, res) => {
+  const token = req.params.token;
+  if (token !== process.env.BOT_TOKEN) {
+    return res.status(403).json({ error: "invalid_token" });
+  }
+  
+  try {
+    const bot = await startTelegramBot();
+    if (bot && req.body) {
+      bot.processUpdate(req.body);
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("Webhook error:", err);
+    res.status(500).json({ error: "internal_error" });
+  }
+});
+
 app.use(notFoundHandler);
 app.use(errorHandler);
 

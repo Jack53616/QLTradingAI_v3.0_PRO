@@ -45,7 +45,9 @@ export async function startTelegramBot() {
       return null;
     }
 
-    const instance = new BotConstructor(token, { polling: true, filepath: false });
+    // Use webhook instead of polling
+    const instance = new BotConstructor(token, { polling: false, filepath: false });
+    
     instance.on("message", (message) => {
       if (!message?.text) return;
       handleMessage(message).catch((err) => {
@@ -59,7 +61,7 @@ export async function startTelegramBot() {
     });
 
     botInstance = instance;
-    log("🤖 Telegram bot polling started");
+    log("🤖 Telegram bot initialized (webhook mode)");
     return instance;
   })();
 
