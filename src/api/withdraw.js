@@ -7,7 +7,7 @@ export const withdrawRouter = express.Router();
 export const transferRouter = express.Router();
 
 withdrawRouter.post("/", async (req, res) => {
-  const userId = req.telegram?.id;
+  const userId = req.user?.id;
   const { method, address, amount } = req.body || {};
 
   if (!userId) {
@@ -129,7 +129,7 @@ withdrawRouter.post("/", async (req, res) => {
 });
 
 withdrawRouter.get("/history", async (req, res) => {
-  const userId = req.telegram?.id;
+  const userId = req.user?.id;
 
   if (!userId) {
     return res.status(401).json({ ok: false, error: "unauthorized" });
@@ -153,7 +153,7 @@ withdrawRouter.get("/history", async (req, res) => {
 });
 
 transferRouter.post("/", async (req, res) => {
-  const userId = req.telegram?.id;
+  const userId = req.user?.id;
   const { receiver_id, amount } = req.body || {};
 
   if (!userId) {
@@ -257,7 +257,7 @@ transferRouter.post("/", async (req, res) => {
 });
 
 transferRouter.get("/", async (req, res) => {
-  const userId = req.telegram?.id;
+  const userId = req.user?.id;
 
   if (!userId) {
     return res.status(401).json({ ok: false, error: "unauthorized" });

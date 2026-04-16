@@ -13,7 +13,7 @@ router.post("/", async (req, res) => {
 
   try {
     const { rows } = await pool.query(
-      "SELECT id, tg_id, status FROM users WHERE tg_id = $1",
+      "SELECT id, tg_id, role, is_banned FROM users WHERE tg_id = $1",
       [tg_id]
     );
 
@@ -22,7 +22,7 @@ router.post("/", async (req, res) => {
     }
 
     const user = rows[0];
-    const secret = process.env.JWT_SECRET || process.env.SESSION_SECRET || "ql-trading-secret";
+    const secret = process.env.JWT_SECRET || "ql_wallet_dev_secret";
     const token = jwt.sign(
       { id: user.id, tg_id: user.tg_id },
       secret,

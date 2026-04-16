@@ -4,7 +4,7 @@ import { pool } from "../utils/db.js";
 const router = express.Router();
 
 router.get("/", async (req, res) => {
-  const userId = req.telegram?.id;
+  const userId = req.user?.id;
   if (!userId) {
     return res.status(401).json({ ok: false, error: "unauthorized" });
   }
