@@ -442,6 +442,34 @@ adminRouter.post("/users/:id/ban", async (req, res, next) => {
   }
 });
 
+adminRouter.post("/users/:id/unban", async (req, res, next) => {
+  try {
+    const userId = Number(req.params.id);
+    if (!userId || Number.isNaN(userId)) {
+      return res.status(400).json({ success: false, message: "invalid_user" });
+    }
+
+    const result = await pool.query(
+      `UPDATE users SET is_banned = false, ban_expires = NULL, ban_reason = NULL, updated_at = NOW()
+       WHERE id = $1 RETURNING id, is_banned`,
+      [userId]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({ success: false, message: "user_not_found" });
+    }
+
+    await pool.query(
+      `INSERT INTO admin_logs (admin_id, target_user_id, action, details) VALUES ($1, $2, $3, $4)`,
+      [req.user.id, userId, "user_unbanned", {}]
+    ).catch(() => {});
+
+    res.json({ success: true, data: { userId, is_banned: false } });
+  } catch (error) {
+    next(error);
+  }
+});
+
 adminRouter.get("/analytics", async (_req, res, next) => {
   try {
     const [{ rows: userRows }, { rows: tradeRows }, { rows: withdrawalRows }, { rows: balanceRows }] = await Promise.all([

@@ -433,8 +433,8 @@ async function handleUserTransfer(chatId, text) {
     return;
   }
 
-  if (sender.status !== "active") {
-    await sendMessage(chatId, "Your account is not active. You cannot make transfers.");
+  if (sender.is_banned) {
+    await sendMessage(chatId, "Your account is restricted. You cannot make transfers.");
     return;
   }
 

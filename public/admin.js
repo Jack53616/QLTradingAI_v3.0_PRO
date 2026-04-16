@@ -150,7 +150,7 @@ async function fetchTransfers() {
 async function fetchStats() {
   adminState.stats = {
     totalUsers: adminState.users.length,
-    activeSubs: adminState.users.filter(u => u.sub_days > 0).length,
+    activeSubs: adminState.users.filter(u => u.sub_expires && new Date(u.sub_expires) > new Date()).length,
     openTrades: adminState.trades.filter(t => t.status === 'open').length,
     totalBalance: adminState.users.reduce((sum, u) => sum + (Number(u.balance) || 0), 0),
   };
@@ -176,7 +176,9 @@ function updateUsersTable() {
   let users = adminState.users;
   const filter = $('#userFilter')?.value;
   if (filter && filter !== 'all') {
-    users = users.filter(u => u.status === filter);
+    if (filter === 'active') users = users.filter(u => !u.is_banned && u.sub_expires && new Date(u.sub_expires) > new Date());
+    else if (filter === 'expired') users = users.filter(u => !u.sub_expires || new Date(u.sub_expires) <= new Date());
+    else if (filter === 'locked') users = users.filter(u => u.is_banned);
   }
   const search = ($('#userSearch')?.value || '').toLowerCase();
   if (search) {
@@ -432,17 +434,20 @@ function handleRefresh() {
 function viewUser(userId) {
   const user = adminState.users.find(u => u.id === userId);
   if (user) {
+    const statusLabel = user.is_banned ? 'Banned' : 'Active';
+    const subExpires = user.sub_expires ? formatDate(user.sub_expires) : 'N/A';
+    const banInfo = user.is_banned && user.ban_expires ? `\nBan Expires: ${formatDate(user.ban_expires)}` : '';
     const details = [
       `ID: ${user.id}`,
       `Telegram ID: ${user.tg_id || 'N/A'}`,
+      `Username: ${user.tg_username || 'N/A'}`,
       `Name: ${user.name || 'N/A'}`,
       `Email: ${user.email || 'N/A'}`,
       `Balance: $${Number(user.balance || 0).toFixed(2)}`,
-      `Subscription: ${user.sub_days || 0} days`,
-      `Expires: ${user.subscription_expires ? formatDate(user.subscription_expires) : 'N/A'}`,
-      `Status: ${user.status}`,
-      `Verified: ${user.verified ? 'Yes' : 'No'}`,
-      `Last Login: ${user.last_login ? formatDate(user.last_login) : 'Never'}`,
+      `Subscription Expires: ${subExpires}`,
+      `Status: ${statusLabel}${banInfo}`,
+      `Rank: ${user.rank || 'N/A'}`,
+      `Level: ${user.level || 'N/A'}`,
     ].join('\n');
     alert(details);
   }
@@ -499,25 +504,17 @@ async function banUserPrompt(userId) {
 
 async function unbanUser(userId) {
   if (!confirm('Unban this user?')) return;
-  const result = await apiCall(`/admin/users/${userId}/balance`, {
+  const result = await apiCall(`/admin/users/${userId}/unban`, {
     method: 'POST',
-    body: { amount: 0, reason: 'unban_trigger' },
+    body: {},
   });
-  await pool_unban(userId);
-}
-
-async function pool_unban(userId) {
-  const result = await apiCall(`/admin/users/${userId}/subscription`, {
-    method: 'POST',
-    body: { days: 0 },
-  });
-  const r2 = await apiCall(`/admin/users/${userId}/ban`, {
-    method: 'POST',
-    body: { duration: null },
-  });
-  showToast('User status update requested');
-  await fetchUsers();
-  updateUsersTable();
+  if (result.ok) {
+    showToast('User unbanned successfully');
+    await fetchUsers();
+    updateUsersTable();
+  } else {
+    showToast('Failed to unban user');
+  }
 }
 
 async function lockUser(userId) {
