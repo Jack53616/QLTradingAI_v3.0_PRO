@@ -13,11 +13,9 @@ function normalizeUser(row) {
     email: row.email,
     name: row.name,
     balance: Number(row.balance || 0),
-    subscriptionExpires: row.subscription_expires,
-    subscriptionDays: row.sub_days,
+    subExpires: row.sub_expires,
     language: row.lang,
-    verified: row.verified,
-    status: row.status,
+    isBanned: row.is_banned,
     role: row.role,
     lastLogin: row.last_login,
     createdAt: row.created_at,
@@ -49,10 +47,10 @@ authRouter.post("/register", async (req, res, next) => {
     }
 
     const insert = await pool.query(
-      `INSERT INTO users (tg_id, email, password_hash, name, lang, role, status)
-       VALUES ($1, $2, $3, $4, COALESCE($5, 'en'), 'user', 'active')
+      `INSERT INTO users (tg_id, email, name, lang, role, is_banned)
+       VALUES ($1, $2, $3, COALESCE($4, 'en'), 'user', FALSE)
        RETURNING *`,
-      [telegramId || null, email, passwordHash, name || null, language]
+      [telegramId || null, email, name || null, language]
     );
 
     const user = normalizeUser(insert.rows[0]);
@@ -154,10 +152,10 @@ authRouter.post("/activate", async (req, res, next) => {
 
     // Create user
     const insert = await pool.query(
-      `INSERT INTO users (tg_id, email, password_hash, name, lang, role, status, verified, sub_days, subscription_expires)
-       VALUES ($1, $2, $3, $4, 'en', 'user', 'active', TRUE, $5, $6)
+      `INSERT INTO users (tg_id, email, name, lang, role, is_banned, sub_expires)
+       VALUES ($1, $2, $3, 'en', 'user', FALSE, $4)
        RETURNING *`,
-      [telegramId || null, email, passwordHash, name, subscriptionDays, subscriptionExpires]
+      [telegramId || null, email, name, subscriptionExpires]
     );
 
     const user = normalizeUser(insert.rows[0]);

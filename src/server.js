@@ -13,6 +13,7 @@ import adminRouter from "./routes/admin.js";
 import walletRouter from "./routes/wallet.js";
 import tokenRouter from "./routes/token.js";
 import requestsRouter from "./routes/requests.js";
+import { transferRouter, withdrawRouter } from "./api/withdraw.js";
 import { authenticate } from "./middleware/authenticate.js";
 import { notFoundHandler, errorHandler } from "./middleware/error-handler.js";
 import { rateLimiter } from "./middleware/rate-limit.js";
@@ -56,7 +57,10 @@ app.use("/api/markets", marketsRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/wallet", authenticate, walletRouter);
 app.use("/api/token", tokenRouter);
+app.use("/api/withdraw", authenticate, withdrawRouter);
 app.use("/api/requests", authenticate, requestsRouter);
+app.use("/api/transfer", authenticate, transferRouter);
+app.use("/api/transfers", authenticate, transferRouter);
 
 // Telegram webhook endpoint
 app.post("/webhook/:token", async (req, res) => {

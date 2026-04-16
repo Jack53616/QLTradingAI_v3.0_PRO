@@ -12,12 +12,9 @@ function mapUser(row) {
     name: row.name,
     balance: Number(row.balance || 0),
     language: row.lang,
-    status: row.status,
+    isBanned: row.is_banned,
     role: row.role,
-    verified: row.verified,
-    subscriptionDays: row.sub_days,
-    subscriptionExpires: row.subscription_expires,
-    lastLogin: row.last_login,
+    subExpires: row.sub_expires,
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };
@@ -26,8 +23,8 @@ function mapUser(row) {
 userRouter.get("/", async (req, res, next) => {
   try {
     const result = await pool.query(
-      `SELECT id, tg_id, email, name, balance, lang, status, role, verified,
-              sub_days, subscription_expires, last_login, created_at, updated_at
+      `SELECT id, tg_id, email, name, balance, lang, is_banned, role,
+              sub_expires, created_at, updated_at
          FROM users WHERE id = $1`,
       [req.user.id]
     );
@@ -56,8 +53,8 @@ userRouter.put("/preferences", async (req, res, next) => {
           SET lang = COALESCE($1, lang),
               updated_at = NOW()
         WHERE id = $2
-        RETURNING id, tg_id, email, name, balance, lang, status, role, verified,
-                  sub_days, subscription_expires, last_login, created_at, updated_at`,
+        RETURNING id, tg_id, email, name, balance, lang, is_banned, role,
+                  sub_expires, created_at, updated_at`,
       [language, req.user.id]
     );
 
@@ -70,7 +67,7 @@ userRouter.put("/preferences", async (req, res, next) => {
 userRouter.get("/subscription", async (req, res, next) => {
   try {
     const result = await pool.query(
-      `SELECT sub_days, subscription_expires
+      `SELECT sub_expires
          FROM users WHERE id = $1`,
       [req.user.id]
     );
@@ -83,8 +80,7 @@ userRouter.get("/subscription", async (req, res, next) => {
     res.json({
       success: true,
       data: {
-        subscriptionDays: row.sub_days,
-        subscriptionExpires: row.subscription_expires
+        subExpires: row.sub_expires
       }
     });
   } catch (error) {

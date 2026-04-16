@@ -46,7 +46,7 @@ activityRouter.get("/ops/:tg", async (req, res) => {
         method as label,
         amount,
         created_at
-      FROM withdraw_requests 
+      FROM requests 
       WHERE user_id = $1
       ORDER BY created_at DESC
       LIMIT 20`,
@@ -90,7 +90,7 @@ activityRouter.get("/requests/:tg", async (req, res) => {
         amount,
         status,
         created_at
-      FROM withdraw_requests 
+      FROM requests 
       WHERE user_id = $1
       ORDER BY created_at DESC
       LIMIT 50`,

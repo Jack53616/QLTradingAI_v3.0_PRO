@@ -709,6 +709,47 @@ body {
   font-size: 14px;
 }
 
+/* Fee & Net cells */
+.fee-cell {
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.fee-cell small {
+  color: var(--text-tertiary);
+  margin-left: 4px;
+}
+
+.net-cell {
+  color: var(--success);
+}
+
+/* Badge variants */
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.badge.success {
+  background: rgba(14, 203, 129, 0.15);
+  color: var(--success);
+}
+
+.badge.danger {
+  background: rgba(246, 70, 93, 0.15);
+  color: var(--danger);
+}
+
+.badge.warning {
+  background: rgba(240, 185, 11, 0.15);
+  color: var(--warning);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .sidebar {

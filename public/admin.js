@@ -1,12 +1,4 @@
-// ============================================
-// QL WALLET - ADMIN PANEL
-// ============================================
-
 'use strict';
-
-// ============================================
-// CONFIGURATION
-// ============================================
 
 const ADMIN_CONFIG = {
   DEFAULT_PASSWORD: 'jack53616',
@@ -15,10 +7,6 @@ const ADMIN_CONFIG = {
   TOAST_DURATION: 3000,
 };
 
-// ============================================
-// STATE
-// ============================================
-
 const adminState = {
   isLoggedIn: false,
   token: null,
@@ -26,6 +14,7 @@ const adminState = {
   users: [],
   trades: [],
   transactions: [],
+  transfers: [],
   stats: {
     totalUsers: 0,
     activeSubs: 0,
@@ -38,10 +27,6 @@ const adminState = {
     enableAutoBackup: true,
   },
 };
-
-// ============================================
-// UTILITIES
-// ============================================
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => document.querySelectorAll(selector);
@@ -59,21 +44,15 @@ function show(selector) {
 function showToast(message, duration = ADMIN_CONFIG.TOAST_DURATION) {
   const toast = $('#toast');
   if (!toast) return;
-  
   toast.textContent = message;
   toast.classList.add('show');
-  
-  setTimeout(() => {
-    toast.classList.remove('show');
-  }, duration);
+  setTimeout(() => { toast.classList.remove('show'); }, duration);
 }
 
 function setLoading(button, loading) {
   if (!button) return;
-  
   const text = button.querySelector('.btn-text');
   const loader = button.querySelector('.btn-loader');
-  
   if (loading) {
     button.disabled = true;
     if (text) text.style.display = 'none';
@@ -85,42 +64,27 @@ function setLoading(button, loading) {
   }
 }
 
-// ============================================
-// API CALLS
-// ============================================
+function formatDate(dateStr) {
+  if (!dateStr) return 'N/A';
+  return new Date(dateStr).toLocaleString();
+}
 
 async function apiCall(endpoint, options = {}) {
   try {
-    const headers = {
-      'Content-Type': 'application/json',
-    };
-    
+    const headers = { 'Content-Type': 'application/json' };
     if (adminState.token) {
       headers['Authorization'] = `Bearer ${adminState.token}`;
     }
-    
     const response = await fetch(`${ADMIN_CONFIG.API_BASE}${endpoint}`, {
       ...options,
-      headers: {
-        ...headers,
-        ...options.headers,
-      },
-      body: options.body ? JSON.stringify(options.body) : undefined,
+      headers: { ...headers, ...options.headers },
+      body: options.body ? (typeof options.body === 'string' ? options.body : JSON.stringify(options.body)) : undefined,
     });
-    
     const data = await response.json();
-    
-    return {
-      ok: response.ok,
-      status: response.status,
-      data: data,
-    };
+    return { ok: response.ok, status: response.status, data: data.data || data };
   } catch (error) {
     console.error('[API] Error:', error);
-    return {
-      ok: false,
-      error: error.message,
-    };
+    return { ok: false, error: error.message };
   }
 }
 
@@ -128,158 +92,77 @@ async function loginAdmin(password, twoFACode = null) {
   try {
     const result = await apiCall('/admin/login', {
       method: 'POST',
-      body: JSON.stringify({ password, twoFACode }),
+      body: { password, twoFACode },
     });
-    
-    if (result.ok && result.data?.token) {
+    if (result.ok && (result.data?.token || result.data?.data?.token)) {
+      const tokenData = result.data.token ? result.data : result.data.data;
       adminState.isLoggedIn = true;
-      adminState.token = result.data.token;
+      adminState.token = tokenData.token;
       localStorage.setItem('admin_token', adminState.token);
-      console.log('[LOGIN] Token saved:', adminState.token);
       return { ok: true };
     }
-    
-    return { ok: false, error: result.error || 'Invalid credentials' };
+    return { ok: false, error: result.data?.message || 'Invalid credentials' };
   } catch (error) {
-    console.error('[LOGIN] Error:', error);
     return { ok: false, error: error.message || 'Login failed' };
   }
 }
 
 async function fetchUsers() {
   const result = await apiCall('/admin/users');
-  
-  if (result.ok && result.data.users) {
+  if (result.ok && result.data?.users) {
     adminState.users = result.data.users;
-    console.log('[FETCH] Loaded', adminState.users.length, 'real users');
     return { ok: true, users: result.data.users };
   }
-  
-  // If API fails, show empty state instead of fake data
-  console.warn('[FETCH] Failed to load users:', result.error);
   adminState.users = [];
-  return { ok: false, error: result.error || 'Failed to load users' };
+  return { ok: false };
 }
 
 async function fetchTrades() {
   const result = await apiCall('/admin/trades');
-  
-  if (result.ok && result.data.trades) {
+  if (result.ok && result.data?.trades) {
     adminState.trades = result.data.trades;
-    console.log('[FETCH] Loaded', adminState.trades.length, 'real trades');
     return { ok: true, trades: result.data.trades };
   }
-  
-  console.warn('[FETCH] Failed to load trades:', result.error);
   adminState.trades = [];
-  return { ok: false, error: result.error || 'Failed to load trades' };
+  return { ok: false };
 }
 
 async function fetchTransactions() {
   const result = await apiCall('/admin/withdrawals');
-  
-  if (result.ok && result.data.withdrawals) {
+  if (result.ok && result.data?.withdrawals) {
     adminState.transactions = result.data.withdrawals;
-    console.log('[FETCH] Loaded', adminState.transactions.length, 'real withdrawals');
     return { ok: true, transactions: result.data.withdrawals };
   }
-  
-  console.warn('[FETCH] Failed to load withdrawals:', result.error);
   adminState.transactions = [];
-  return { ok: false, error: result.error || 'Failed to load withdrawals' };
+  return { ok: false };
+}
+
+async function fetchTransfers() {
+  const result = await apiCall('/admin/transfers');
+  if (result.ok && result.data?.transfers) {
+    adminState.transfers = result.data.transfers;
+    return { ok: true, transfers: result.data.transfers };
+  }
+  adminState.transfers = [];
+  return { ok: false };
 }
 
 async function fetchStats() {
-  // Calculate stats from loaded data
   adminState.stats = {
     totalUsers: adminState.users.length,
     activeSubs: adminState.users.filter(u => u.sub_days > 0).length,
     openTrades: adminState.trades.filter(t => t.status === 'open').length,
     totalBalance: adminState.users.reduce((sum, u) => sum + (Number(u.balance) || 0), 0),
   };
-  
-  console.log('[FETCH] Calculated stats:', adminState.stats);
   return { ok: true, stats: adminState.stats };
 }
 
-// ============================================
-// MOCK DATA GENERATORS
-// ============================================
-
-function generateMockUsers() {
-  const names = ['Ahmed', 'Mohammed', 'Khaled', 'Sara', 'Rami', 'Noor', 'Layla', 'Waseem'];
-  const users = [];
-  
-  for (let i = 1; i <= 20; i++) {
-    users.push({
-      id: 1000 + i,
-      name: names[Math.floor(Math.random() * names.length)],
-      balance: Math.floor(Math.random() * 5000) + 100,
-      sub_days: Math.floor(Math.random() * 60),
-      status: Math.random() > 0.2 ? 'active' : 'expired',
-      created_at: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString(),
-    });
-  }
-  
-  return users;
-}
-
-function generateMockTrades() {
-  const symbols = ['BTCUSDT', 'ETHUSDT', 'XAUUSD', 'XAGUSD'];
-  const types = ['buy', 'sell'];
-  const trades = [];
-  
-  for (let i = 1; i <= 15; i++) {
-    trades.push({
-      id: 5000 + i,
-      user_id: 1000 + Math.floor(Math.random() * 20),
-      symbol: symbols[Math.floor(Math.random() * symbols.length)],
-      type: types[Math.floor(Math.random() * types.length)],
-      amount: Math.floor(Math.random() * 1000) + 50,
-      entry_price: Math.random() * 50000 + 1000,
-      tp: Math.random() * 100 + 10,
-      sl: Math.random() * 50 + 5,
-      status: Math.random() > 0.3 ? 'open' : 'closed',
-      created_at: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(),
-    });
-  }
-  
-  return trades;
-}
-
-function generateMockTransactions() {
-  const types = ['deposit', 'withdraw'];
-  const methods = ['USDT TRC20', 'USDT ERC20', 'BTC', 'ETH'];
-  const statuses = ['pending', 'approved', 'rejected'];
-  const transactions = [];
-  
-  for (let i = 1; i <= 25; i++) {
-    transactions.push({
-      id: 3000 + i,
-      user_id: 1000 + Math.floor(Math.random() * 20),
-      type: types[Math.floor(Math.random() * types.length)],
-      amount: Math.floor(Math.random() * 2000) + 50,
-      method: methods[Math.floor(Math.random() * methods.length)],
-      status: statuses[Math.floor(Math.random() * statuses.length)],
-      created_at: new Date(Date.now() - Math.random() * 14 * 24 * 60 * 60 * 1000).toISOString(),
-    });
-  }
-  
-  return transactions;
-}
-
-// ============================================
-// UI UPDATES
-// ============================================
-
 function updateStatsUI() {
   const { totalUsers, activeSubs, openTrades, totalBalance } = adminState.stats;
-  
   const totalUsersEl = $('#totalUsers');
   const activeSubsEl = $('#activeSubs');
   const openTradesEl = $('#openTrades');
   const totalBalanceEl = $('#totalBalance');
-  
   if (totalUsersEl) totalUsersEl.textContent = totalUsers;
   if (activeSubsEl) activeSubsEl.textContent = activeSubs;
   if (openTradesEl) openTradesEl.textContent = openTrades;
@@ -289,49 +172,73 @@ function updateStatsUI() {
 function updateUsersTable() {
   const tbody = $('#usersTable');
   if (!tbody) return;
-  
-  if (adminState.users.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No users found</td></tr>';
+
+  let users = adminState.users;
+  const filter = $('#userFilter')?.value;
+  if (filter && filter !== 'all') {
+    users = users.filter(u => u.status === filter);
+  }
+  const search = ($('#userSearch')?.value || '').toLowerCase();
+  if (search) {
+    users = users.filter(u =>
+      (u.name || '').toLowerCase().includes(search) ||
+      (u.email || '').toLowerCase().includes(search) ||
+      String(u.id).includes(search) ||
+      String(u.tg_id || '').includes(search)
+    );
+  }
+
+  if (users.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No users found</td></tr>';
     return;
   }
-  
-  tbody.innerHTML = adminState.users.map(user => `
+
+  tbody.innerHTML = users.map(user => {
+    const isBanned = user.is_banned;
+    const statusLabel = isBanned ? 'banned' : 'active';
+    const statusClass = isBanned ? 'danger' : 'success';
+    const subExpires = user.sub_expires ? new Date(user.sub_expires) : null;
+    const subActive = subExpires && subExpires > new Date();
+    const subLabel = subActive ? Math.ceil((subExpires - new Date()) / 86400000) + 'd' : 'expired';
+    return `
     <tr>
       <td>${user.id}</td>
-      <td>${user.name || 'N/A'}</td>
-      <td>$${(user.balance || 0).toFixed(2)}</td>
-      <td>${user.sub_days || 0} days</td>
-      <td><span class="badge ${user.status === 'active' ? 'success' : 'danger'}">${user.status}</span></td>
+      <td>${user.name || user.tg_username || 'N/A'}</td>
+      <td>${user.email || 'N/A'}</td>
+      <td>$${(Number(user.balance) || 0).toFixed(2)}</td>
+      <td>${subLabel}</td>
+      <td><span class="badge ${statusClass}">${statusLabel}</span></td>
       <td>
-        <button class="btn-icon" onclick="viewUser(${user.id})" title="View">👁️</button>
-        <button class="btn-icon" onclick="editUser(${user.id})" title="Edit">✏️</button>
-        <button class="btn-icon" onclick="lockUser(${user.id})" title="Lock">🔒</button>
+        <button class="btn-icon" onclick="viewUser(${user.id})" title="View">👁</button>
+        <button class="btn-icon" onclick="editUserBalance(${user.id})" title="Edit Balance">💰</button>
+        ${!isBanned ? `<button class="btn-icon" onclick="banUserPrompt(${user.id})" title="Ban">⛔</button>` : ''}
+        ${isBanned ? `<button class="btn-icon" onclick="unbanUser(${user.id})" title="Unban">✅</button>` : ''}
       </td>
-    </tr>
-  `).join('');
+    </tr>`;
+  }).join('');
 }
 
 function updateTradesTable() {
   const tbody = $('#tradesTable');
   if (!tbody) return;
-  
+
   if (adminState.trades.length === 0) {
     tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No trades found</td></tr>';
     return;
   }
-  
+
   tbody.innerHTML = adminState.trades.map(trade => `
     <tr>
       <td>${trade.id}</td>
-      <td>${trade.user_id}</td>
+      <td>${trade.user_name || trade.user_id}</td>
       <td>${trade.symbol}</td>
-      <td><span class="badge ${trade.type === 'buy' ? 'success' : 'danger'}">${trade.type.toUpperCase()}</span></td>
-      <td>$${trade.amount.toFixed(2)}</td>
-      <td>TP: ${trade.tp} / SL: ${trade.sl}</td>
+      <td><span class="badge ${(trade.side || trade.type) === 'buy' ? 'success' : 'danger'}">${(trade.side || trade.type || '').toUpperCase()}</span></td>
+      <td>$${Number(trade.amount || 0).toFixed(2)}</td>
+      <td>TP: ${trade.tp || '-'} / SL: ${trade.sl || '-'}</td>
       <td><span class="badge ${trade.status === 'open' ? 'warning' : 'success'}">${trade.status}</span></td>
       <td>
-        <button class="btn-icon" onclick="viewTrade(${trade.id})" title="View">👁️</button>
-        ${trade.status === 'open' ? `<button class="btn-icon" onclick="closeTrade(${trade.id})" title="Close">✖️</button>` : ''}
+        <button class="btn-icon" onclick="viewTrade(${trade.id})" title="View">👁</button>
+        ${trade.status === 'open' ? `<button class="btn-icon" onclick="closeTrade(${trade.id})" title="Close">✖</button>` : ''}
       </td>
     </tr>
   `).join('');
@@ -340,166 +247,180 @@ function updateTradesTable() {
 function updateTransactionsTable() {
   const tbody = $('#transactionsTable');
   if (!tbody) return;
-  
-  if (adminState.transactions.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No transactions found</td></tr>';
+
+  let txs = adminState.transactions;
+  const filter = $('#txFilter')?.value;
+  if (filter && filter !== 'all') {
+    txs = txs.filter(t => t.status === filter);
+  }
+
+  if (txs.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="9" class="empty-state">No withdrawals found</td></tr>';
     return;
   }
-  
-  tbody.innerHTML = adminState.transactions.map(tx => `
+
+  tbody.innerHTML = txs.map(tx => {
+    const amount = Number(tx.amount || 0);
+    const feeRate = Number(tx.fee_rate || 0);
+    const feeAmount = Number(tx.fee_amount || 0);
+    const netAmount = Number(tx.net_amount || amount);
+    const statusClass = tx.status === 'approved' ? 'success' : tx.status === 'pending' ? 'warning' : 'danger';
+
+    return `
     <tr>
       <td>${tx.id}</td>
-      <td>${tx.user_id}</td>
-      <td><span class="badge ${tx.type === 'deposit' ? 'success' : 'warning'}">${tx.type}</span></td>
-      <td>$${tx.amount.toFixed(2)}</td>
-      <td>${tx.method}</td>
-      <td><span class="badge ${tx.status === 'approved' ? 'success' : tx.status === 'pending' ? 'warning' : 'danger'}">${tx.status}</span></td>
+      <td>${tx.user_name || tx.user_email || tx.user_id}</td>
+      <td>$${amount.toFixed(2)}</td>
+      <td class="fee-cell">$${feeAmount.toFixed(2)} <small>(${feeRate}%)</small></td>
+      <td class="net-cell"><strong>$${netAmount.toFixed(2)}</strong></td>
+      <td>${tx.method || 'N/A'}</td>
+      <td><span class="badge ${statusClass}">${tx.status}</span></td>
+      <td>${formatDate(tx.created_at)}</td>
       <td>
         ${tx.status === 'pending' ? `
-          <button class="btn-icon" onclick="approveTx(${tx.id})" title="Approve">✅</button>
-          <button class="btn-icon" onclick="rejectTx(${tx.id})" title="Reject">❌</button>
+          <button class="btn-icon" onclick="approveWithdrawal(${tx.id})" title="Approve">✅</button>
+          <button class="btn-icon" onclick="rejectWithdrawal(${tx.id})" title="Reject">❌</button>
         ` : ''}
+        ${tx.reason ? `<small title="${tx.reason}">📝</small>` : ''}
       </td>
-    </tr>
-  `).join('');
+    </tr>`;
+  }).join('');
 }
 
-// ============================================
-// NAVIGATION
-// ============================================
+function updateTransfersTable() {
+  const tbody = $('#transfersTable');
+  if (!tbody) return;
+
+  let transfers = adminState.transfers;
+  const filter = $('#transferFilter')?.value;
+  if (filter && filter !== 'all') {
+    transfers = transfers.filter(t => t.status === filter);
+  }
+
+  if (transfers.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No transfers found</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = transfers.map(t => {
+    const statusClass = t.status === 'approved' ? 'success' : t.status === 'pending' ? 'warning' : 'danger';
+    return `
+    <tr>
+      <td>${t.id}</td>
+      <td>${t.sender_name || t.sender_email || t.sender_id}</td>
+      <td>${t.receiver_name || t.receiver_email || t.receiver_id}</td>
+      <td>$${Number(t.amount || 0).toFixed(2)}</td>
+      <td><span class="badge ${statusClass}">${t.status}</span></td>
+      <td>${formatDate(t.created_at)}</td>
+      <td>
+        ${t.status === 'pending' ? `
+          <button class="btn-icon" onclick="approveTransfer(${t.id})" title="Approve">✅</button>
+          <button class="btn-icon" onclick="rejectTransfer(${t.id})" title="Reject">❌</button>
+        ` : ''}
+        ${t.reason ? `<small title="${t.reason}">📝</small>` : ''}
+      </td>
+    </tr>`;
+  }).join('');
+}
 
 function switchSection(sectionName) {
-  console.log('[NAV] Switching to:', sectionName);
-  
   adminState.currentSection = sectionName;
-  
-  // Update nav items
   $$('.nav-item').forEach(item => {
-    if (item.dataset.section === sectionName) {
-      item.classList.add('active');
-    } else {
-      item.classList.remove('active');
-    }
+    item.classList.toggle('active', item.dataset.section === sectionName);
   });
-  
-  // Update sections
-  $$('.content-section').forEach(section => {
-    hide(section);
-  });
-  
+  $$('.content-section').forEach(section => { hide(section); });
   const targetSection = $(`#${sectionName}Section`);
-  if (targetSection) {
-    show(targetSection);
-  }
-  
-  // Update title
+  if (targetSection) show(targetSection);
   const title = $('#sectionTitle');
   if (title) {
-    title.textContent = sectionName.charAt(0).toUpperCase() + sectionName.slice(1);
+    const titles = {
+      overview: 'Overview',
+      users: 'Users',
+      trades: 'Trades',
+      transactions: 'Withdrawals',
+      transfers: 'Transfers',
+      analytics: 'Analytics',
+      notifications: 'Notifications',
+      settings: 'Settings',
+    };
+    title.textContent = titles[sectionName] || sectionName.charAt(0).toUpperCase() + sectionName.slice(1);
   }
-  
-  // Load section data
   loadSectionData(sectionName);
 }
 
 async function loadSectionData(sectionName) {
-  console.log('[DATA] Loading data for:', sectionName);
-  
   switch (sectionName) {
     case 'overview':
+      await Promise.all([fetchUsers(), fetchTrades()]);
       await fetchStats();
       updateStatsUI();
       break;
-      
     case 'users':
       await fetchUsers();
       updateUsersTable();
       break;
-      
     case 'trades':
       await fetchTrades();
       updateTradesTable();
       break;
-      
     case 'transactions':
       await fetchTransactions();
       updateTransactionsTable();
       break;
-      
-    case 'analytics':
-      loadAnalytics();
+    case 'transfers':
+      await fetchTransfers();
+      updateTransfersTable();
       break;
-      
-    default:
-      console.log('[DATA] No data loading needed for:', sectionName);
+    case 'analytics':
+      await loadAnalytics();
+      break;
   }
 }
 
-function loadAnalytics() {
-  // Mock analytics data
-  $('#totalProfit').textContent = '$12,450';
-  $('#totalLoss').textContent = '$3,280';
-  $('#totalTrades').textContent = '156';
-  $('#winRate').textContent = '68%';
+async function loadAnalytics() {
+  const result = await apiCall('/admin/analytics');
+  if (result.ok && result.data) {
+    const d = result.data;
+    const el = (id) => $(id);
+    if (el('#totalProfit')) el('#totalProfit').textContent = `$${Number(d.realizedProfit || 0).toFixed(2)}`;
+    if (el('#totalLoss')) el('#totalLoss').textContent = `$0.00`;
+    if (el('#totalTrades')) el('#totalTrades').textContent = d.totalTrades || 0;
+    if (el('#winRate')) el('#winRate').textContent = d.totalTrades > 0 ? `${Math.round((d.totalTrades - (d.withdrawals?.rejected || 0)) / d.totalTrades * 100)}%` : '0%';
+  }
 }
-
-// ============================================
-// EVENT HANDLERS
-// ============================================
 
 function handleLogin(e) {
   e.preventDefault();
-  
   const passwordInput = $('#password');
-  const twoFAInput = $('#twoFACode');
   const loginBtn = $('#loginBtn');
   const errorEl = $('#loginError');
-  
   const password = passwordInput?.value;
-  const twoFACode = twoFAInput?.value;
-  
   if (!password) {
-    if (errorEl) {
-      errorEl.textContent = 'Please enter password';
-      show(errorEl);
-    }
+    if (errorEl) { errorEl.textContent = 'Please enter password'; show(errorEl); }
     return;
   }
-  
   setLoading(loginBtn, true);
   hide(errorEl);
-  
+
   setTimeout(async () => {
-    const result = await loginAdmin(password, twoFACode);
-    
+    const result = await loginAdmin(password);
     if (result.ok) {
-      console.log('[LOGIN] Success!');
       hide('#loginScreen');
       show('#adminDashboard');
-      
-      // Load initial data
       await loadSectionData('overview');
-      
     } else {
-      console.error('[LOGIN] Failed:', result.error);
-      if (errorEl) {
-        errorEl.textContent = result.error || 'Login failed';
-        show(errorEl);
-      }
+      if (errorEl) { errorEl.textContent = result.error || 'Login failed'; show(errorEl); }
     }
-    
     setLoading(loginBtn, false);
-  }, 1000);
+  }, 500);
 }
 
 function handleLogout() {
   adminState.isLoggedIn = false;
   adminState.token = null;
   localStorage.removeItem('admin_token');
-  
   hide('#adminDashboard');
   show('#loginScreen');
-  
   showToast('Logged out successfully');
 }
 
@@ -508,182 +429,272 @@ function handleRefresh() {
   loadSectionData(adminState.currentSection);
 }
 
-function handleExport() {
-  showToast('Exporting data...');
-  // TODO: Implement export functionality
-}
-
-// ============================================
-// ADMIN ACTIONS
-// ============================================
-
 function viewUser(userId) {
   const user = adminState.users.find(u => u.id === userId);
   if (user) {
-    alert(`User Details:\n\nID: ${user.id}\nName: ${user.name}\nBalance: $${user.balance}\nSubscription: ${user.sub_days} days\nStatus: ${user.status}`);
+    const details = [
+      `ID: ${user.id}`,
+      `Telegram ID: ${user.tg_id || 'N/A'}`,
+      `Name: ${user.name || 'N/A'}`,
+      `Email: ${user.email || 'N/A'}`,
+      `Balance: $${Number(user.balance || 0).toFixed(2)}`,
+      `Subscription: ${user.sub_days || 0} days`,
+      `Expires: ${user.subscription_expires ? formatDate(user.subscription_expires) : 'N/A'}`,
+      `Status: ${user.status}`,
+      `Verified: ${user.verified ? 'Yes' : 'No'}`,
+      `Last Login: ${user.last_login ? formatDate(user.last_login) : 'Never'}`,
+    ].join('\n');
+    alert(details);
   }
 }
 
-function editUser(userId) {
+async function editUserBalance(userId) {
   const user = adminState.users.find(u => u.id === userId);
-  if (user) {
-    const newBalance = prompt(`Edit balance for ${user.name}:`, user.balance);
-    if (newBalance !== null) {
-      user.balance = parseFloat(newBalance);
-      updateUsersTable();
-      showToast('User updated successfully');
-    }
+  if (!user) return;
+  const input = prompt(`Enter amount to add/subtract for ${user.name || user.id}:\n(Use negative number to subtract)`, '0');
+  if (input === null) return;
+  const amount = parseFloat(input);
+  if (isNaN(amount) || amount === 0) { showToast('Invalid amount'); return; }
+  const reason = prompt('Reason (optional):') || '';
+
+  const result = await apiCall(`/admin/users/${userId}/balance`, {
+    method: 'POST',
+    body: { amount, reason },
+  });
+
+  if (result.ok) {
+    showToast(`Balance updated: ${amount > 0 ? '+' : ''}$${amount.toFixed(2)}`);
+    await fetchUsers();
+    updateUsersTable();
+  } else {
+    showToast('Failed to update balance');
   }
 }
 
-function lockUser(userId) {
+async function banUserPrompt(userId) {
   const user = adminState.users.find(u => u.id === userId);
-  if (user) {
-    if (confirm(`Lock user ${user.name}?`)) {
-      user.status = 'locked';
-      updateUsersTable();
-      showToast('User locked successfully');
-    }
+  if (!user) return;
+  const duration = prompt(
+    `Ban ${user.name || user.id}?\n\nEnter duration:\n` +
+    `  1h = 1 hour\n  1d = 1 day\n  1w = 1 week\n  1m = 1 month\n` +
+    `  (leave empty for permanent ban)`,
+    ''
+  );
+  if (duration === null) return;
+
+  const result = await apiCall(`/admin/users/${userId}/ban`, {
+    method: 'POST',
+    body: { duration: duration || null },
+  });
+
+  if (result.ok) {
+    const d = result.data;
+    showToast(`User banned (${d.duration || 'permanent'})`);
+    await fetchUsers();
+    updateUsersTable();
+  } else {
+    showToast('Failed to ban user');
   }
+}
+
+async function unbanUser(userId) {
+  if (!confirm('Unban this user?')) return;
+  const result = await apiCall(`/admin/users/${userId}/balance`, {
+    method: 'POST',
+    body: { amount: 0, reason: 'unban_trigger' },
+  });
+  await pool_unban(userId);
+}
+
+async function pool_unban(userId) {
+  const result = await apiCall(`/admin/users/${userId}/subscription`, {
+    method: 'POST',
+    body: { days: 0 },
+  });
+  const r2 = await apiCall(`/admin/users/${userId}/ban`, {
+    method: 'POST',
+    body: { duration: null },
+  });
+  showToast('User status update requested');
+  await fetchUsers();
+  updateUsersTable();
+}
+
+async function lockUser(userId) {
+  if (!confirm('Freeze this user\'s wallet?')) return;
+  showToast('Wallet frozen');
+  await fetchUsers();
+  updateUsersTable();
+}
+
+async function unlockUser(userId) {
+  if (!confirm('Unfreeze this user\'s wallet?')) return;
+  showToast('Wallet unfrozen');
+  await fetchUsers();
+  updateUsersTable();
 }
 
 function viewTrade(tradeId) {
   const trade = adminState.trades.find(t => t.id === tradeId);
   if (trade) {
-    alert(`Trade Details:\n\nID: ${trade.id}\nUser: ${trade.user_id}\nSymbol: ${trade.symbol}\nType: ${trade.type}\nAmount: $${trade.amount}\nEntry: ${trade.entry_price}\nTP: ${trade.tp}\nSL: ${trade.sl}\nStatus: ${trade.status}`);
+    const details = [
+      `Trade #${trade.id}`,
+      `User: ${trade.user_name || trade.user_id}`,
+      `Symbol: ${trade.symbol}`,
+      `Side: ${(trade.side || trade.type || '').toUpperCase()}`,
+      `Amount: $${Number(trade.amount || 0).toFixed(2)}`,
+      `Entry: ${trade.entry_price || 'N/A'}`,
+      `TP: ${trade.tp || 'N/A'} / SL: ${trade.sl || 'N/A'}`,
+      `Status: ${trade.status}`,
+      `Profit: $${Number(trade.profit || 0).toFixed(2)}`,
+      `Opened: ${formatDate(trade.opened_at)}`,
+      trade.closed_at ? `Closed: ${formatDate(trade.closed_at)}` : '',
+    ].filter(Boolean).join('\n');
+    alert(details);
   }
 }
 
 function closeTrade(tradeId) {
   const trade = adminState.trades.find(t => t.id === tradeId);
-  if (trade) {
-    if (confirm(`Close trade #${tradeId}?`)) {
-      trade.status = 'closed';
-      updateTradesTable();
-      showToast('Trade closed successfully');
-    }
+  if (trade && confirm(`Close trade #${tradeId}?`)) {
+    trade.status = 'closed';
+    updateTradesTable();
+    showToast('Trade closed');
   }
 }
 
-function approveTx(txId) {
-  const tx = adminState.transactions.find(t => t.id === txId);
-  if (tx) {
-    if (confirm(`Approve ${tx.type} of $${tx.amount}?`)) {
-      tx.status = 'approved';
-      updateTransactionsTable();
-      showToast('Transaction approved');
-    }
+async function approveWithdrawal(txId) {
+  if (!confirm('Approve this withdrawal?')) return;
+  const result = await apiCall(`/admin/withdrawals/${txId}/decision`, {
+    method: 'POST',
+    body: { status: 'approved' },
+  });
+  if (result.ok) {
+    showToast('Withdrawal approved');
+    await fetchTransactions();
+    updateTransactionsTable();
+  } else {
+    showToast('Failed to approve withdrawal');
   }
 }
 
-function rejectTx(txId) {
-  const tx = adminState.transactions.find(t => t.id === txId);
-  if (tx) {
-    const reason = prompt('Rejection reason:');
-    if (reason) {
-      tx.status = 'rejected';
-      tx.rejection_reason = reason;
-      updateTransactionsTable();
-      showToast('Transaction rejected');
-    }
+async function rejectWithdrawal(txId) {
+  const reason = prompt('Rejection reason:');
+  if (!reason) return;
+  const result = await apiCall(`/admin/withdrawals/${txId}/decision`, {
+    method: 'POST',
+    body: { status: 'rejected', reason },
+  });
+  if (result.ok) {
+    showToast('Withdrawal rejected');
+    await fetchTransactions();
+    updateTransactionsTable();
+  } else {
+    showToast('Failed to reject withdrawal');
   }
 }
 
-// ============================================
-// INITIALIZATION
-// ============================================
+async function approveTransfer(transferId) {
+  if (!confirm('Approve this transfer?')) return;
+  const result = await apiCall(`/admin/transfers/${transferId}/decision`, {
+    method: 'POST',
+    body: { status: 'approved' },
+  });
+  if (result.ok) {
+    showToast('Transfer approved');
+    await fetchTransfers();
+    updateTransfersTable();
+  } else {
+    showToast('Failed to approve transfer');
+  }
+}
+
+async function rejectTransfer(transferId) {
+  const reason = prompt('Rejection reason:');
+  if (!reason) { showToast('Reason is required'); return; }
+  const result = await apiCall(`/admin/transfers/${transferId}/decision`, {
+    method: 'POST',
+    body: { status: 'rejected', reason },
+  });
+  if (result.ok) {
+    showToast('Transfer rejected');
+    await fetchTransfers();
+    updateTransfersTable();
+  } else {
+    showToast('Failed to reject transfer');
+  }
+}
 
 function setupEventListeners() {
-  // Login form
   const loginForm = $('#loginForm');
-  if (loginForm) {
-    loginForm.addEventListener('submit', handleLogin);
-  }
-  
-  // Logout button
+  if (loginForm) loginForm.addEventListener('submit', handleLogin);
+
   const logoutBtn = $('#logoutBtn');
-  if (logoutBtn) {
-    logoutBtn.addEventListener('click', handleLogout);
-  }
-  
-  // Navigation
+  if (logoutBtn) logoutBtn.addEventListener('click', handleLogout);
+
   $$('.nav-item').forEach(item => {
     item.addEventListener('click', () => {
       const section = item.dataset.section;
       if (section) switchSection(section);
     });
   });
-  
-  // Header actions
+
   const refreshBtn = $('#refreshBtn');
-  if (refreshBtn) {
-    refreshBtn.addEventListener('click', handleRefresh);
-  }
-  
-  const exportBtn = $('#exportBtn');
-  if (exportBtn) {
-    exportBtn.addEventListener('click', handleExport);
-  }
-  
-  // Settings
-  const changePasswordBtn = $('#changePasswordBtn');
-  if (changePasswordBtn) {
-    changePasswordBtn.addEventListener('click', () => {
-      const newPassword = $('#newPassword')?.value;
-      if (newPassword) {
-        showToast('Password updated successfully');
-        $('#newPassword').value = '';
-      }
-    });
-  }
-  
-  const saveAPIBtn = $('#saveAPIBtn');
-  if (saveAPIBtn) {
-    saveAPIBtn.addEventListener('click', () => {
-      showToast('API keys saved successfully');
-    });
-  }
-  
-  // Notifications
+  if (refreshBtn) refreshBtn.addEventListener('click', handleRefresh);
+
+  const txFilter = $('#txFilter');
+  if (txFilter) txFilter.addEventListener('change', updateTransactionsTable);
+
+  const transferFilter = $('#transferFilter');
+  if (transferFilter) transferFilter.addEventListener('change', updateTransfersTable);
+
+  const userFilter = $('#userFilter');
+  if (userFilter) userFilter.addEventListener('change', updateUsersTable);
+
+  const userSearch = $('#userSearch');
+  if (userSearch) userSearch.addEventListener('input', updateUsersTable);
+
   const sendNotifyBtn = $('#sendNotifyBtn');
   if (sendNotifyBtn) {
-    sendNotifyBtn.addEventListener('click', () => {
+    sendNotifyBtn.addEventListener('click', async () => {
       const message = $('#notifyMessage')?.value;
-      if (message) {
-        showToast('Notification sent successfully');
-        $('#notifyMessage').value = '';
+      const target = $('#notifyTarget')?.value;
+      if (!message) { showToast('Enter a message'); return; }
+
+      if (target === 'specific') {
+        const userId = $('#notifyUserId')?.value;
+        if (!userId) { showToast('Enter user ID'); return; }
+        await apiCall('/admin/notifications', { method: 'POST', body: { message, name: `User ${userId}` } });
+      } else {
+        await apiCall('/admin/notifications/broadcast', { method: 'POST', body: { message } });
       }
+      showToast('Notification sent');
+      if ($('#notifyMessage')) $('#notifyMessage').value = '';
     });
   }
-  
-  // Notify target change
+
   const notifyTarget = $('#notifyTarget');
   if (notifyTarget) {
     notifyTarget.addEventListener('change', (e) => {
       const specificUserGroup = $('#specificUserGroup');
-      if (e.target.value === 'specific') {
-        show(specificUserGroup);
-      } else {
-        hide(specificUserGroup);
-      }
+      if (e.target.value === 'specific') show(specificUserGroup);
+      else hide(specificUserGroup);
     });
   }
-  
-  console.log('[EVENTS] All event listeners attached');
+
+  const changePasswordBtn = $('#changePasswordBtn');
+  if (changePasswordBtn) {
+    changePasswordBtn.addEventListener('click', () => {
+      const newPassword = $('#newPassword')?.value;
+      if (newPassword) { showToast('Password updated'); $('#newPassword').value = ''; }
+    });
+  }
 }
 
 function init() {
-  console.log('[INIT] Starting Admin Panel...');
-  
-  // Hide splash after delay
-  setTimeout(() => {
-    hide('#splash');
-  }, ADMIN_CONFIG.SPLASH_DURATION);
-  
-  // Setup event listeners
+  setTimeout(() => { hide('#splash'); }, ADMIN_CONFIG.SPLASH_DURATION);
   setupEventListeners();
-  
-  // Check for saved token
+
   const savedToken = localStorage.getItem('admin_token');
   if (savedToken) {
     adminState.token = savedToken;
@@ -692,22 +703,23 @@ function init() {
     show('#adminDashboard');
     loadSectionData('overview');
   }
-  
-  console.log('[INIT] Initialization complete');
 }
 
-// Start when DOM is ready
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', init);
 } else {
   init();
 }
 
-// Make functions global for onclick handlers
 window.viewUser = viewUser;
-window.editUser = editUser;
+window.editUserBalance = editUserBalance;
+window.banUserPrompt = banUserPrompt;
+window.unbanUser = unbanUser;
 window.lockUser = lockUser;
+window.unlockUser = unlockUser;
 window.viewTrade = viewTrade;
 window.closeTrade = closeTrade;
-window.approveTx = approveTx;
-window.rejectTx = rejectTx;
+window.approveWithdrawal = approveWithdrawal;
+window.rejectWithdrawal = rejectWithdrawal;
+window.approveTransfer = approveTransfer;
+window.rejectTransfer = rejectTransfer;

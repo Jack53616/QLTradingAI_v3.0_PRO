@@ -38,6 +38,7 @@ const state = {
   markets: {},
   activities: [],
   requests: [],
+  transfers: [],
   trades: [],
   feedTimer: null,
   marketTimer: null,
@@ -452,6 +453,26 @@ async function submitWithdraw(method, amount) {
   return result;
 }
 
+async function submitTransfer(receiverId, amount) {
+  const result = await apiCall('/api/transfer', {
+    method: 'POST',
+    body: {
+      receiver_id: receiverId,
+      amount: parseFloat(amount),
+    },
+  });
+  return result;
+}
+
+async function fetchTransfers() {
+  const result = await apiCall('/api/transfers');
+  if (result.ok && result.transfers) {
+    state.transfers = result.transfers;
+    updateTransfersUI();
+  }
+  return result;
+}
+
 // ============================================
 // UI UPDATES
 // ============================================
@@ -550,11 +571,62 @@ function updateRequestsUI() {
   container.innerHTML = state.requests
     .map(req => {
       const statusClass = req.status === 'approved' ? 'approved' : req.status === 'rejected' ? 'rejected' : '';
+      const amount = Number(req.amount || 0);
+      const feeRate = Number(req.fee_rate || 0);
+      const feeAmount = Number(req.fee_amount || 0);
+      const netAmount = Number(req.net_amount || amount);
+      const hasFee = feeRate > 0;
+      const date = req.created_at ? new Date(req.created_at).toLocaleDateString() : '';
+      
       return `
         <div class="request-item ${statusClass}">
-          <div><strong>${req.type || 'Request'}</strong></div>
-          <div>Amount: $${req.amount || 0}</div>
-          <div>Status: ${req.status || 'pending'}</div>
+          <div class="req-header">
+            <strong>${req.method || 'Withdrawal'}</strong>
+            <span class="req-status ${statusClass}">${(req.status || 'pending').toUpperCase()}</span>
+          </div>
+          <div class="req-amount">Amount: $${amount.toFixed(2)}</div>
+          ${hasFee ? `
+            <div class="req-fee">Fee: $${feeAmount.toFixed(2)} (${feeRate}%)</div>
+            <div class="req-net">You receive: <strong>$${netAmount.toFixed(2)}</strong></div>
+          ` : ''}
+          ${req.reason ? `<div class="req-reason">Reason: ${req.reason}</div>` : ''}
+          ${date ? `<div class="req-date">${date}</div>` : ''}
+        </div>
+      `;
+    })
+    .join('');
+}
+
+function updateTransfersUI() {
+  const container = $('#transfersList');
+  if (!container) return;
+  
+  if (!state.transfers || state.transfers.length === 0) {
+    container.innerHTML = '<div class="empty-state">No transfers yet</div>';
+    return;
+  }
+  
+  container.innerHTML = state.transfers
+    .map(t => {
+      const statusClass = t.status === 'approved' ? 'approved' : t.status === 'rejected' ? 'rejected' : '';
+      const isSender = t.sender_id === state.user?.id;
+      const direction = isSender ? 'Sent' : 'Received';
+      const dirIcon = isSender ? '↗' : '↙';
+      const otherName = isSender
+        ? (t.receiver_name || t.receiver_email || `#${t.receiver_id}`)
+        : (t.sender_name || t.sender_email || `#${t.sender_id}`);
+      const date = t.created_at ? new Date(t.created_at).toLocaleDateString() : '';
+      
+      return `
+        <div class="request-item ${statusClass}">
+          <div class="req-header">
+            <strong>${dirIcon} ${direction}</strong>
+            <span class="req-status ${statusClass}">${(t.status || 'pending').toUpperCase()}</span>
+          </div>
+          <div class="req-amount">$${Number(t.amount || 0).toFixed(2)}</div>
+          <div class="req-to">${isSender ? 'To' : 'From'}: ${otherName}</div>
+          ${t.reason ? `<div class="req-reason">Reason: ${t.reason}</div>` : ''}
+          ${date ? `<div class="req-date">${date}</div>` : ''}
         </div>
       `;
     })
@@ -770,11 +842,12 @@ function switchTab(tabName) {
     }
   });
   
-  // Fetch data for specific tabs
   if (tabName === 'markets') {
     fetchMarkets();
   } else if (tabName === 'requests') {
     fetchRequests();
+  } else if (tabName === 'transfer') {
+    fetchTransfers();
   }
 }
 
@@ -1019,6 +1092,39 @@ function setupEventListeners() {
     });
   });
   
+  // Transfer button
+  const transferBtn = $('#transferBtn');
+  if (transferBtn) {
+    transferBtn.addEventListener('click', async () => {
+      const receiverInput = $('#transferReceiverInput');
+      const amountInput = $('#transferAmountInput');
+      const receiver = receiverInput?.value?.trim();
+      const amount = parseFloat(amountInput?.value);
+      
+      if (!receiver) { notify('Please enter receiver ID or email'); return; }
+      if (!amount || amount <= 0) { notify('Please enter a valid amount'); return; }
+      
+      setLoading(transferBtn, true);
+      
+      try {
+        const result = await submitTransfer(receiver, amount);
+        if (result.ok) {
+          notify('Transfer request sent! Waiting for admin approval.');
+          if (receiverInput) receiverInput.value = '';
+          if (amountInput) amountInput.value = '';
+          await fetchTransfers();
+          await fetchWallet();
+        } else {
+          notify(result.error || result.message || 'Transfer failed');
+        }
+      } catch (err) {
+        notify('Transfer error. Please try again.');
+      } finally {
+        setLoading(transferBtn, false);
+      }
+    });
+  }
+  
   // Save SL/TP button
   const saveSLTPBtn = $('#saveSLTPBtn');
   if (saveSLTPBtn) {
@@ -1164,7 +1270,13 @@ const i18n = {
     tabTrades: 'Trades',
     tabWithdraw: 'Withdraw',
     tabRequests: 'Requests',
+    tabTransfer: 'Transfer',
     tabSupport: 'Support',
+    transferTitle: 'Transfer to User',
+    transferInfo: 'Send funds to another user. Transfers require admin approval.',
+    sendTransfer: 'Send Transfer',
+    myTransfers: 'My Transfers',
+    noTransfers: 'No transfers yet',
     noOpenTrade: 'No open trade',
     withdraw: 'Withdraw',
     markets: 'Markets',
@@ -1195,7 +1307,13 @@ const i18n = {
     tabTrades: 'الصفقات',
     tabWithdraw: 'السحب',
     tabRequests: 'الطلبات',
+    tabTransfer: 'تحويل',
     tabSupport: 'الدعم',
+    transferTitle: 'تحويل إلى مستخدم',
+    transferInfo: 'أرسل أموالاً إلى مستخدم آخر. التحويلات تتطلب موافقة الإدارة.',
+    sendTransfer: 'إرسال تحويل',
+    myTransfers: 'تحويلاتي',
+    noTransfers: 'لا توجد تحويلات بعد',
     noOpenTrade: 'لا توجد صفقة مفتوحة',
     withdraw: 'سحب',
     markets: 'الأسواق',

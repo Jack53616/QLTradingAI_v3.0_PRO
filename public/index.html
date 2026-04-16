@@ -100,6 +100,7 @@
         <button class="nav-tab" data-tab="markets" data-i18n="tabMarkets">Markets</button>
         <button class="nav-tab" data-tab="trades" data-i18n="tabTrades">Trades</button>
         <button class="nav-tab" data-tab="withdraw" data-i18n="tabWithdraw">Withdraw</button>
+        <button class="nav-tab" data-tab="transfer" data-i18n="tabTransfer">Transfer</button>
         <button class="nav-tab" data-tab="requests" data-i18n="tabRequests">Requests</button>
         <button class="nav-tab" data-tab="support" data-i18n="tabSupport">Support</button>
       </nav>
@@ -283,6 +284,33 @@
               <a href="https://t.me/qlsupport" target="_blank" class="btn btn-secondary">
                 ✉️ Telegram: @qlsupport
               </a>
+            </div>
+          </div>
+        </div>
+      </section>
+      
+      <!-- Transfer Tab -->
+      <section id="transferTab" class="tab-content">
+        <div class="card glass">
+          <h3 class="card-title" data-i18n="transferTitle">Transfer to User</h3>
+          
+          <div class="info-box">
+            <p data-i18n="transferInfo">Send funds to another user. Transfers require admin approval.</p>
+          </div>
+          
+          <div class="transfer-form">
+            <input type="text" id="transferReceiverInput" class="input-field" placeholder="Receiver ID or Email" required>
+            <input type="number" id="transferAmountInput" class="input-field" placeholder="Amount ($)" min="1" step="0.01" required>
+            <button id="transferBtn" class="btn btn-primary">
+              <span class="btn-text" data-i18n="sendTransfer">Send Transfer</span>
+              <span class="btn-loader" style="display: none;">...</span>
+            </button>
+          </div>
+          
+          <div style="margin-top: 20px;">
+            <h4 class="card-title" data-i18n="myTransfers">My Transfers</h4>
+            <div id="transfersList" class="requests-list">
+              <div class="empty-state" data-i18n="noTransfers">No transfers yet</div>
             </div>
           </div>
         </div>

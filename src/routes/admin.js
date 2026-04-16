@@ -69,8 +69,9 @@ adminRouter.use(authenticate, requireAdmin);
 adminRouter.get("/users", async (_req, res, next) => {
   try {
     const result = await pool.query(
-      `SELECT id, tg_id, email, name, balance, lang, status, verified,
-              sub_days, subscription_expires, last_login, role
+      `SELECT id, tg_id, email, name, balance, lang, is_banned, ban_expires,
+              sub_expires, last_activity_at, role, rank, tg_username,
+              total_deposited, total_withdrawn, level
          FROM users
         ORDER BY created_at DESC`
     );
@@ -131,11 +132,10 @@ adminRouter.post("/users/:id/subscription", async (req, res, next) => {
 
     const result = await pool.query(
       `UPDATE users
-          SET sub_days = sub_days + $1,
-              subscription_expires = COALESCE(subscription_expires, NOW()) + ($1 || ' days')::interval,
+          SET sub_expires = COALESCE(sub_expires, NOW()) + ($1 || ' days')::interval,
               updated_at = NOW()
         WHERE id = $2
-        RETURNING id, sub_days, subscription_expires`,
+        RETURNING id, sub_expires`,
       [days, userId]
     );
 
@@ -155,8 +155,7 @@ adminRouter.post("/users/:id/subscription", async (req, res, next) => {
       success: true,
       data: {
         userId,
-        subDays: Number(result.rows[0].sub_days),
-        subscriptionExpires: result.rows[0].subscription_expires
+        subExpires: result.rows[0].sub_expires
       }
     });
   } catch (error) {
@@ -184,11 +183,12 @@ adminRouter.get("/trades", async (_req, res, next) => {
 adminRouter.get("/withdrawals", async (_req, res, next) => {
   try {
     const result = await pool.query(
-      `SELECT w.id, w.user_id, u.name AS user_name, u.email AS user_email, w.amount, w.method,
-              w.status, w.reason, w.created_at, w.processed_at
-         FROM withdrawals w
-         LEFT JOIN users u ON u.id = w.user_id
-        ORDER BY w.created_at DESC
+      `SELECT r.id, r.user_id, u.name AS user_name, u.email AS user_email,
+              r.amount, r.fee_rate, r.fee_amount, r.net_amount, r.method,
+              r.status, r.admin_note, r.created_at, r.updated_at
+         FROM requests r
+         LEFT JOIN users u ON u.id = r.user_id
+        ORDER BY r.created_at DESC
         LIMIT 200`
     );
 
@@ -215,16 +215,23 @@ adminRouter.post("/withdrawals/:id/decision", async (req, res, next) => {
       return res.status(400).json({ success: false, message: "reason_required" });
     }
 
-    const existing = await pool.query("SELECT id FROM withdrawals WHERE id = $1", [withdrawalId]);
+    const existing = await pool.query("SELECT id, user_id, amount FROM requests WHERE id = $1", [withdrawalId]);
     if (!existing.rows.length) {
       return res.status(404).json({ success: false, message: "withdrawal_not_found" });
     }
 
+    if (status === "rejected") {
+      await pool.query(
+        `UPDATE users SET balance = balance + $1, updated_at = NOW() WHERE id = $2`,
+        [existing.rows[0].amount, existing.rows[0].user_id]
+      );
+    }
+
     await pool.query(
-      `UPDATE withdrawals
+      `UPDATE requests
           SET status = $1,
-              reason = CASE WHEN $1 = 'rejected' THEN $2 ELSE reason END,
-              processed_at = NOW()
+              admin_note = CASE WHEN $1 = 'rejected' THEN $2 ELSE admin_note END,
+              updated_at = NOW()
         WHERE id = $3`,
       [status, reason || null, withdrawalId]
     );
@@ -232,7 +239,7 @@ adminRouter.post("/withdrawals/:id/decision", async (req, res, next) => {
     await pool
       .query(
         `INSERT INTO admin_logs (admin_id, target_user_id, action, details)
-         VALUES ($1, (SELECT user_id FROM withdrawals WHERE id = $2), $3, $4)`,
+         VALUES ($1, (SELECT user_id FROM requests WHERE id = $2), $3, $4)`,
         [req.user.id, withdrawalId, `withdrawal_${status}`, { reason }]
       )
       .catch(() => {});
@@ -303,6 +310,138 @@ adminRouter.post("/notifications/broadcast", (req, res) => {
   res.status(201).json({ success: true, message: "broadcast_sent" });
 });
 
+adminRouter.get("/transfers", async (_req, res, next) => {
+  try {
+    const result = await pool.query(
+      `SELECT t.id, t.sender_id, t.receiver_id, t.amount, t.status, t.reason,
+              t.created_at, t.processed_at,
+              su.name AS sender_name, su.email AS sender_email,
+              ru.name AS receiver_name, ru.email AS receiver_email
+         FROM transfers t
+         LEFT JOIN users su ON su.id = t.sender_id
+         LEFT JOIN users ru ON ru.id = t.receiver_id
+        ORDER BY t.created_at DESC
+        LIMIT 200`
+    );
+
+    res.json({ success: true, data: { transfers: result.rows } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.post("/transfers/:id/decision", async (req, res, next) => {
+  try {
+    const transferId = Number(req.params.id);
+    const { status, reason } = req.body || {};
+
+    if (!transferId || Number.isNaN(transferId)) {
+      return res.status(400).json({ success: false, message: "invalid_transfer" });
+    }
+
+    if (!status || !["approved", "rejected"].includes(status)) {
+      return res.status(400).json({ success: false, message: "invalid_status" });
+    }
+
+    const existing = await pool.query(
+      "SELECT * FROM transfers WHERE id = $1 AND status = 'pending'",
+      [transferId]
+    );
+    if (!existing.rows.length) {
+      return res.status(404).json({ success: false, message: "transfer_not_found_or_processed" });
+    }
+
+    const transfer = existing.rows[0];
+
+    if (status === "approved") {
+      await pool.query("BEGIN");
+      try {
+        await pool.query(
+          `UPDATE users SET balance = balance + $1, updated_at = NOW() WHERE id = $2`,
+          [transfer.amount, transfer.receiver_id]
+        );
+        await pool.query(
+          `UPDATE transfers SET status = 'approved', processed_at = NOW() WHERE id = $1`,
+          [transferId]
+        );
+        await pool.query("COMMIT");
+      } catch (err) {
+        await pool.query("ROLLBACK");
+        throw err;
+      }
+    } else {
+      await pool.query(
+        `UPDATE transfers SET status = 'rejected', reason = $1, processed_at = NOW() WHERE id = $2`,
+        [reason || "Admin rejected", transferId]
+      );
+      await pool.query(
+        `UPDATE users SET balance = balance + $1, updated_at = NOW() WHERE id = $2`,
+        [transfer.amount, transfer.sender_id]
+      );
+    }
+
+    await pool
+      .query(
+        `INSERT INTO admin_logs (admin_id, target_user_id, action, details)
+         VALUES ($1, $2, $3, $4)`,
+        [req.user.id, transfer.sender_id, `transfer_${status}`, { transferId, reason, amount: Number(transfer.amount) }]
+      )
+      .catch(() => {});
+
+    res.json({ success: true, data: { id: transferId, status, reason: reason || null } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+adminRouter.post("/users/:id/ban", async (req, res, next) => {
+  try {
+    const userId = Number(req.params.id);
+    const { duration } = req.body || {};
+
+    if (!userId || Number.isNaN(userId)) {
+      return res.status(400).json({ success: false, message: "invalid_user" });
+    }
+
+    let banExpires = null;
+    let durationLabel = "permanent";
+
+    if (duration) {
+      const match = duration.match(/^(\d+)([hdwm])$/i);
+      if (match) {
+        const value = Number(match[1]);
+        const unit = match[2].toLowerCase();
+        const now = new Date();
+        switch (unit) {
+          case "h": banExpires = new Date(now.getTime() + value * 3600000); durationLabel = `${value}h`; break;
+          case "d": banExpires = new Date(now.getTime() + value * 86400000); durationLabel = `${value}d`; break;
+          case "w": banExpires = new Date(now.getTime() + value * 604800000); durationLabel = `${value}w`; break;
+          case "m": banExpires = new Date(now.getTime() + value * 2592000000); durationLabel = `${value}m`; break;
+        }
+      }
+    }
+
+    const result = await pool.query(
+      `UPDATE users SET is_banned = true, ban_expires = $1, ban_reason = $2, banned_at = NOW(), updated_at = NOW()
+       WHERE id = $3 RETURNING id, is_banned, ban_expires`,
+      [banExpires, `Banned (${durationLabel})`, userId]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({ success: false, message: "user_not_found" });
+    }
+
+    await pool.query(
+      `INSERT INTO admin_logs (admin_id, target_user_id, action, details) VALUES ($1, $2, $3, $4)`,
+      [req.user.id, userId, "user_banned", { duration: durationLabel, banExpires }]
+    ).catch(() => {});
+
+    res.json({ success: true, data: { userId, is_banned: true, banExpires, duration: durationLabel } });
+  } catch (error) {
+    next(error);
+  }
+});
+
 adminRouter.get("/analytics", async (_req, res, next) => {
   try {
     const [{ rows: userRows }, { rows: tradeRows }, { rows: withdrawalRows }, { rows: balanceRows }] = await Promise.all([
@@ -316,7 +455,7 @@ adminRouter.get("/analytics", async (_req, res, next) => {
         `SELECT COUNT(*) FILTER (WHERE status = 'pending')::int AS pending,
                 COUNT(*) FILTER (WHERE status = 'approved')::int AS approved,
                 COUNT(*) FILTER (WHERE status = 'rejected')::int AS rejected
-           FROM withdrawals`
+           FROM requests`
       ),
       pool.query(`SELECT COALESCE(SUM(balance),0)::numeric AS total_balance FROM users`)
     ]);

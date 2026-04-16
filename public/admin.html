@@ -73,7 +73,12 @@
         
         <button class="nav-item" data-section="transactions">
           <span class="nav-icon">💰</span>
-          <span class="nav-label">Transactions</span>
+          <span class="nav-label">Withdrawals</span>
+        </button>
+        
+        <button class="nav-item" data-section="transfers">
+          <span class="nav-icon">🔄</span>
+          <span class="nav-label">Transfers</span>
         </button>
         
         <button class="nav-item" data-section="analytics">
@@ -219,14 +224,14 @@
         </div>
       </section>
 
-      <!-- Transactions Section -->
+      <!-- Transactions/Withdrawals Section -->
       <section id="transactionsSection" class="content-section hidden">
         <div class="section-toolbar">
           <select id="txFilter" class="filter-select">
-            <option value="all">All Transactions</option>
-            <option value="deposit">Deposits</option>
-            <option value="withdraw">Withdrawals</option>
+            <option value="all">All Withdrawals</option>
             <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
           </select>
         </div>
         
@@ -236,16 +241,51 @@
               <tr>
                 <th>ID</th>
                 <th>User</th>
-                <th>Type</th>
                 <th>Amount</th>
+                <th>Fee</th>
+                <th>Net Amount</th>
                 <th>Method</th>
                 <th>Status</th>
+                <th>Date</th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody id="transactionsTable">
               <tr>
-                <td colspan="7" class="empty-state">Loading transactions...</td>
+                <td colspan="9" class="empty-state">Loading withdrawals...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Transfers Section -->
+      <section id="transfersSection" class="content-section hidden">
+        <div class="section-toolbar">
+          <select id="transferFilter" class="filter-select">
+            <option value="all">All Transfers</option>
+            <option value="pending">Pending</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+          </select>
+        </div>
+        
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>From</th>
+                <th>To</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="transfersTable">
+              <tr>
+                <td colspan="7" class="empty-state">Loading transfers...</td>
               </tr>
             </tbody>
           </table>
